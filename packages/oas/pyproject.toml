@@ -1,0 +1,25 @@
+[project]
+name = "meridian-oas"
+version = "0.1.0"
+description = "OpenAeroStruct MCP server for agentic analysis"
+requires-python = ">=3.11"
+dependencies = [
+    "meridian-sdk",
+    # "openaerostruct>=2.8",
+    "openmdao>=3.30",
+    "numpy",
+    "matplotlib",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meridian_oas"]
+
+[tool.uv.sources]
+meridian-sdk = { workspace = true }
+# For development: use local upstream clone
+# Comment below and uncomment the openaerostruct dependency above for production
+openaerostruct = { path = "../../upstream/OpenAeroStruct", editable = true }

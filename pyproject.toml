@@ -1,0 +1,12 @@
+[project]
+name = "meridian-tools"
+version = "0.1.0"
+description = "Agentic engineering analysis tools"
+requires-python = ">=3.11"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+meridian-sdk = { workspace = true }
+meridian-oas = { workspace = true }

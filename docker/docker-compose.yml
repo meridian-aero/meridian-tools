@@ -1,0 +1,7 @@
+services:
+  oas:
+    build:
+      context: ../packages/oas
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
