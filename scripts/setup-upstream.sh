@@ -33,6 +33,17 @@ else
     git -C "$UPSTREAM_DIR/pyCycle" pull
 fi
 
+# Apply numpy 2.x compatibility patch (fixes np.complex removal and
+# shape-(1,) scalar assignment).  Tracks upstream issue OpenMDAO/pyCycle#116.
+# Remove this block once the upstream PR is merged.
+PYCYCLE_PATCH="$(dirname "$0")/pycycle-numpy2.patch"
+if [ -f "$PYCYCLE_PATCH" ]; then
+    echo "  Applying numpy 2.x compat patch..."
+    git -C "$UPSTREAM_DIR/pyCycle" apply --check "$PYCYCLE_PATCH" 2>/dev/null \
+        && git -C "$UPSTREAM_DIR/pyCycle" apply "$PYCYCLE_PATCH" \
+        || echo "  Patch already applied or upstream fixed — skipping."
+fi
+
 echo "Cloning AeroSandbox..."
 if [ ! -d "$UPSTREAM_DIR/AeroSandbox" ]; then
     git clone https://github.com/peterdsharpe/AeroSandbox "$UPSTREAM_DIR/AeroSandbox"

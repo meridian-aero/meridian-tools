@@ -1,0 +1,75 @@
+diff --git a/pycycle/thermo/cea/chem_eq.py b/pycycle/thermo/cea/chem_eq.py
+index 6bd76ed..69b35f1 100644
+--- a/pycycle/thermo/cea/chem_eq.py
++++ b/pycycle/thermo/cea/chem_eq.py
+@@ -291,9 +291,9 @@ class ChemEq(om.ImplicitComponent):
+         # pi = outputs['pi']
+ 
+         if outputs._under_complex_step:
+-            dRdy = self._dRdy = self._dRdy.astype(np.complex)
++            dRdy = self._dRdy = self._dRdy.astype(np.complex128)
+             if self.use_trace_damping:
+-                self.weights = self.weights.astype(np.complex)
++                self.weights = self.weights.astype(np.complex128)
+         else:
+             dRdy = self._dRdy = self._dRdy.real
+             if self.use_trace_damping:
+diff --git a/pycycle/thermo/cea/props_calcs.py b/pycycle/thermo/cea/props_calcs.py
+index a71842a..335df7e 100644
+--- a/pycycle/thermo/cea/props_calcs.py
++++ b/pycycle/thermo/cea/props_calcs.py
+@@ -60,7 +60,7 @@ class PropsCalcs(ExplicitComponent):
+ 
+         nj = inputs['n'][:num_prod]
+         # nj[nj<0] = 1e-10 # ensure all concentrations stay non-zero
+-        n_moles = inputs['n_moles']
++        n_moles = inputs['n_moles'].item()
+ 
+         self.dlnVqdlnP = dlnVqdlnP = -1 + inputs['result_P'][num_element]
+         self.dlnVqdlnT = dlnVqdlnT = 1 - result_T[num_element]
+@@ -109,7 +109,7 @@ class PropsCalcs(ExplicitComponent):
+         T = inputs['T']
+         P = inputs['P']
+         nj = inputs['n']
+-        n_moles = inputs['n_moles']
++        n_moles = inputs['n_moles'].item()
+         result_T = inputs['result_T']
+         result_T_last = result_T[num_element]
+         result_T_rest = result_T[:num_element]
+diff --git a/pycycle/thermo/cea/props_rhs.py b/pycycle/thermo/cea/props_rhs.py
+index fe68e0d..9942eed 100644
+--- a/pycycle/thermo/cea/props_rhs.py
++++ b/pycycle/thermo/cea/props_rhs.py
+@@ -96,7 +96,7 @@ class PropsRHS(ExplicitComponent):
+ 
+         # rhs for P
+         outputs['rhs_P'][:num_element] = b0
+-        outputs['rhs_P'][num_element] = inputs['n_moles']
++        outputs['rhs_P'][num_element] = inputs['n_moles'].item()
+ 
+         # rhs for T
+         self.H0_T = H0_T = thermo.H0(T)
+@@ -111,8 +111,8 @@ class PropsRHS(ExplicitComponent):
+         aij = thermo.aij
+ 
+         if inputs._under_complex_step:
+-            self.drhsT_dT = self.drhsT_dT.astype(np.complex)
+-            self.drhsT_dn = self.drhsT_dn.astype(np.complex)
++            self.drhsT_dT = self.drhsT_dT.astype(np.complex128)
++            self.drhsT_dn = self.drhsT_dn.astype(np.complex128)
+         else:
+             self.drhsT_dT = self.drhsT_dT.real
+             self.drhsT_dn = self.drhsT_dn.real
+diff --git a/pycycle/thermo/tabular/thermo_add.py b/pycycle/thermo/tabular/thermo_add.py
+index b2c19c3..bc863f3 100644
+--- a/pycycle/thermo/tabular/thermo_add.py
++++ b/pycycle/thermo/tabular/thermo_add.py
+@@ -118,7 +118,7 @@ class ThermoAdd(om.ExplicitComponent):
+                 W_air_mix = W_air_in # for reactant mode, we reference from the incoming air
+                 W_other_mix = W_air_mix * ratio 
+                 outputs[f'{mix_name}:W'] = W_other_mix
+-                W_other_out[self.idx_compo] += W_other_mix
++                W_other_out[self.idx_compo] += W_other_mix.item()
+                 W_out += W_other_mix
+                 W_times_h += W_other_mix*inputs[f'{mix_name}:h']
+ 

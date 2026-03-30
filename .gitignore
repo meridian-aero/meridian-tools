@@ -211,6 +211,9 @@ __marimo__/
 upstream/*/
 !upstream/.gitkeep
 
+# OpenMDAO output directories (created by prob.run_model())
+*_out/
+
 # Provenance databases (local state)
 *.db
 
