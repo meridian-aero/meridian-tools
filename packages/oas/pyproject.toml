@@ -5,7 +5,7 @@ description = "OpenAeroStruct MCP server for agentic analysis"
 requires-python = ">=3.11"
 dependencies = [
     "hangar-sdk[all]",
-    "openaerostruct",
+    "openaerostruct>=2.12,<3",
     "openmdao>=3.35,!=3.40",
     "numpy>=1.21",
     "scipy>=1.7",

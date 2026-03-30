@@ -1,0 +1,149 @@
+{
+  "schema_version": "1.0",
+  "description": "OAS integration test reference values for MCP parity tests",
+  "reproducibility_header": {
+    "python_version": "3.11.14 (main, Oct 31 2025, 23:04:14) [Clang 21.1.4 ]",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "openmdao_version": "3.42.0",
+    "oas_version": "2.12.0",
+    "numpy_version": "2.4.2",
+    "note": "Run with OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1"
+  },
+  "cases": {
+    "rect_aero_parity": {
+      "source": "tests/integration_tests/test_simple_rect_aero.py:104-108",
+      "surface_config": {
+        "name": "wing",
+        "wing_type": "rect",
+        "num_x": 2,
+        "num_y": 5,
+        "symmetry": true,
+        "twist_cp": [
+          0.0
+        ],
+        "CD0": 0.015,
+        "with_viscous": true,
+        "with_wave": false
+      },
+      "flight_config": {
+        "surfaces": [
+          "wing"
+        ],
+        "velocity": 248.136,
+        "alpha": 5.0,
+        "Mach_number": 0.84,
+        "reynolds_number": 1000000.0,
+        "density": 0.38
+      },
+      "expected": {
+        "CD": 0.03487336411850356,
+        "CL": 0.4615561217697068,
+        "CM": -0.11507021674483689
+      },
+      "tolerances": {
+        "CL": {
+          "rel": 1e-06
+        },
+        "CD": {
+          "rel": 1e-06
+        },
+        "CM": {
+          "rel": 1e-06
+        }
+      }
+    },
+    "crm_aero_parity": {
+      "source": "tests/integration_tests/test_aero_analysis.py:104-106",
+      "surface_config": {
+        "name": "wing",
+        "wing_type": "CRM",
+        "num_x": 3,
+        "num_y": 7,
+        "num_twist_cp": 5,
+        "symmetry": true,
+        "CD0": 0.015,
+        "with_viscous": true,
+        "with_wave": false
+      },
+      "flight_config": {
+        "surfaces": [
+          "wing"
+        ],
+        "velocity": 248.136,
+        "alpha": 5.0,
+        "Mach_number": 0.84,
+        "reynolds_number": 1000000.0,
+        "density": 0.38
+      },
+      "expected": {
+        "CD": 0.03622959988220801,
+        "CL": 0.5112639234320075,
+        "CM": -2.0555849545517906
+      },
+      "tolerances": {
+        "CL": {
+          "rel": 1e-06
+        },
+        "CD": {
+          "rel": 1e-06
+        },
+        "CM": {
+          "rel": 1e-06
+        }
+      }
+    },
+    "crm_aerostruct_parity": {
+      "source": "tests/integration_tests/test_aerostruct_analysis.py:141-142",
+      "surface_config": {
+        "name": "wing",
+        "wing_type": "CRM",
+        "num_x": 2,
+        "num_y": 5,
+        "num_twist_cp": 5,
+        "symmetry": true,
+        "CD0": 0.015,
+        "with_viscous": true,
+        "with_wave": false,
+        "fem_model_type": "tube",
+        "thickness_cp": [
+          0.3,
+          0.2,
+          0.1
+        ],
+        "E": 70000000000.0,
+        "G": 30000000000.0,
+        "yield_stress": 500000000.0,
+        "safety_factor": 2.5,
+        "mrho": 3000.0,
+        "wing_weight_ratio": 2.0,
+        "struct_weight_relief": false,
+        "distributed_fuel_weight": false
+      },
+      "flight_config": {
+        "surfaces": [
+          "wing"
+        ],
+        "velocity": 248.136,
+        "alpha": 5.0,
+        "Mach_number": 0.84,
+        "reynolds_number": 1000000.0,
+        "density": 0.38,
+        "W0": 120000.0,
+        "R": 11165000.0,
+        "speed_of_sound": 295.4
+      },
+      "expected": {
+        "fuelburn": 241347.34494621187,
+        "CM": -0.7040800097095121
+      },
+      "tolerances": {
+        "fuelburn": {
+          "rel": 0.0001
+        },
+        "CM": {
+          "rel": 1e-05
+        }
+      }
+    }
+  }
+}

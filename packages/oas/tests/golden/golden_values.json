@@ -1,0 +1,86 @@
+{
+  "reproducibility_header": {
+    "python_version": "3.11.14 (main, Oct 31 2025, 23:04:14) [Clang 21.1.4 ]",
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "openmdao_version": "3.42.0",
+    "oas_version": "2.12.0",
+    "numpy_version": "2.4.2",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "note": "Run with OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 for reproducibility"
+  },
+  "cases": {
+    "rect_aero_alpha5": {
+      "inputs": {
+        "wing_type": "rect",
+        "alpha": 5.0,
+        "num_y": 7,
+        "span": 10.0,
+        "root_chord": 1.0,
+        "with_viscous": true,
+        "CD0": 0.015
+      },
+      "outputs": {
+        "CL": 0.4521766324285423,
+        "CD": 0.03508727634845452,
+        "CM": -0.1127389282765389,
+        "L_over_D": 12.887196713074571
+      },
+      "tolerances": {
+        "CL": {"rel": 0.005},
+        "CD": {"rel": 0.01},
+        "CM": {"rel": 0.01},
+        "L_over_D": {"rel": 0.01}
+      }
+    },
+    "rect_aerostruct_alpha5": {
+      "inputs": {
+        "wing_type": "rect",
+        "alpha": 5.0,
+        "W0": 120000,
+        "R": 11165000.0,
+        "num_y": 7,
+        "fem_model_type": "tube",
+        "E": 70000000000.0,
+        "G": 30000000000.0,
+        "yield_stress": 500000000.0,
+        "safety_factor": 2.5,
+        "mrho": 3000.0
+      },
+      "outputs": {
+        "CL": 0.4672853340680132,
+        "CD": 0.03550864207979006,
+        "fuelburn": 92920.50107612091,
+        "structural_mass": 942.4777960769378
+      },
+      "tolerances": {
+        "CL": {"rel": 0.005},
+        "CD": {"rel": 0.01},
+        "fuelburn": {"rel": 0.02},
+        "structural_mass": {"rel": 0.02}
+      }
+    },
+    "crm_aero_alpha5": {
+      "inputs": {
+        "wing_type": "CRM",
+        "alpha": 5.0,
+        "Mach_number": 0.84,
+        "velocity": 248.136,
+        "density": 0.38,
+        "num_y": 7
+      },
+      "outputs": {
+        "CL": 0.5458589439806276,
+        "CD": 0.036685904179227125,
+        "CM": -2.1941035144155396,
+        "L_over_D": 14.879255566766501
+      },
+      "tolerances": {
+        "CL": {"rel": 0.005},
+        "CD": {"rel": 0.01},
+        "CM": {"rel": 0.05},
+        "L_over_D": {"rel": 0.01}
+      }
+    }
+  }
+}
