@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "OpenAeroStruct": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/alex/coding/the-hangar", "python", "-m", "hangar.oas.server"],
+      "env": {
+        "OAS_DATA_DIR": "/home/alex/coding/the-hangar/oas_data"
+      }
+    }
+  }
+}

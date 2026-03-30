@@ -1,10 +1,720 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hangar Workflow Viewer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OAS Provenance Viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f1117;
+    color: #e0e0e0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Toolbar ── */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: #1a1d27;
+    border-bottom: 1px solid #2d3047;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  #toolbar h1 { font-size: 15px; font-weight: 600; color: #8eb6ff; margin-right: 6px; }
+  .btn {
+    padding: 5px 12px;
+    border-radius: 5px;
+    border: 1px solid #3a3e54;
+    background: #252839;
+    color: #c0c8e8;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .btn:hover { background: #2e3245; }
+  .btn.active { background: #2a4a7f; border-color: #4a6fa8; color: #fff; }
+
+  #session-select {
+    padding: 5px 8px;
+    border-radius: 5px;
+    border: 1px solid #3a3e54;
+    background: #252839;
+    color: #c0c8e8;
+    font-size: 12px;
+  }
+
+  #drop-zone {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border: 1px dashed #4a4e64;
+    border-radius: 5px;
+    color: #888;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #drop-zone.over { border-color: #5a8aff; background: #1e243a; color: #8eb6ff; }
+  #file-input { display: none; }
+
+  /* ── Main layout ── */
+  #main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── Graph ── */
+  #cy-container {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+  }
+  #cy { width: 100%; height: 100%; }
+
+  /* ── Side panel ── */
+  #panel {
+    width: 320px;
+    background: #1a1d27;
+    border-left: 1px solid #2d3047;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  #panel-header {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #8eb6ff;
+    border-bottom: 1px solid #2d3047;
+    background: #1e2130;
+  }
+  #panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  #panel-body h3 { font-size: 13px; color: #9cb8ff; margin-bottom: 6px; }
+  #panel-body .kv { margin-bottom: 4px; }
+  #panel-body .kv .key { color: #888; font-size: 11px; }
+  #panel-body .kv .val { color: #d0d8f0; word-break: break-word; }
+  #panel-body pre {
+    background: #12141e;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    color: #b0bcd8;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-ok     { background: #1a4a2a; color: #4cdf88; }
+  .badge-error  { background: #4a1a1a; color: #ff6b6b; }
+  .badge-high   { background: #1a3a1a; color: #5de05d; }
+  .badge-medium { background: #3a3010; color: #e0c040; }
+  .badge-low    { background: #3a2010; color: #e08040; }
+
+  /* ── Timeline bar ── */
+  #timeline {
+    height: 36px;
+    background: #141620;
+    border-top: 1px solid #2d3047;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 4px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .tl-segment {
+    height: 20px;
+    min-width: 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+  }
+  /* Tooltip is rendered as a fixed-position JS div — no ::after needed */
+
+  /* ── Floating tooltip ── */
+  #tooltip {
+    position: fixed;
+    display: none;
+    background: #252839;
+    color: #e0e0e0;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1000;
+    border: 1px solid #3a3e54;
+  }
+
+  /* ── Plot buttons ── */
+  .plot-btn {
+    padding: 4px 9px;
+    font-size: 11px;
+    background: #1a2a4a;
+    border-color: #3a5a8a;
+    color: #8eb6ff;
+  }
+  .plot-btn:hover { background: #1e3560; }
+  #plot-display img { width: 100%; border-radius: 4px; margin-top: 6px; }
+  #plot-display .plot-loading { color: #888; font-size: 11px; }
+  #plot-display .plot-error   { color: #ff6b6b; font-size: 11px; }
+
+  /* ── FSM overlay ── */
+  .fsm-node { font-size: 11px; }
+
+  /* ── Loading / empty state ── */
+  #empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    pointer-events: none;
+  }
+  #empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  #empty-state p { font-size: 14px; }
+</style>
 </head>
 <body>
+
+<div id="toolbar">
+  <h1>OAS Provenance</h1>
+
+  <!-- File drop -->
+  <div id="drop-zone" title="Drop a JSON graph file or click to browse">
+    <span>&#x1F4C2;</span> <span id="drop-label">Load JSON…</span>
+    <input type="file" id="file-input" accept=".json">
+  </div>
+
+  <!-- Live endpoint -->
+  <select id="session-select" title="Sessions from live server"><option value="">— Live session —</option></select>
+  <button class="btn" id="btn-refresh" title="Refresh session list">↺ Refresh</button>
+
+  <div style="flex:1"></div>
+
+  <!-- Controls -->
+  <button class="btn" id="btn-fit">Fit</button>
+  <button class="btn" id="btn-fsm">FSM</button>
+  <button class="btn" id="btn-svg">SVG</button>
+</div>
+
+<div id="main">
+  <div id="cy-container">
+    <div id="cy"></div>
+    <div id="empty-state">
+      <div class="icon">&#x1F50D;</div>
+      <p>Load a provenance JSON file or connect to the live server.</p>
+    </div>
+  </div>
+  <div id="panel">
+    <div id="panel-header">Node Details</div>
+    <div id="panel-body"><p style="color:#666;font-size:12px">Click a node to inspect it.</p></div>
+  </div>
+</div>
+
+<div id="timeline" title="Timeline — click a segment to select node"></div>
+<div id="tooltip"></div>
+
+<script>
+// ── Register cytoscape-dagre layout ──────────────────────────────────────
+cytoscape.use(cytoscapeDagre);
+
+// ── Cytoscape instance ────────────────────────────────────────────────────
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  style: [
+    {
+      selector: 'node[type="tool_call"]',
+      style: {
+        shape: 'round-rectangle',
+        width: 120, height: 36,
+        label: 'data(label)',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'font-size': 11,
+        'color': '#e0e8ff',
+        'background-color': ele => ele.data('status') === 'error' ? '#5a1a1a' : '#1a3a5a',
+        'border-width': 1.5,
+        'border-color': ele => ele.data('status') === 'error' ? '#ff6b6b' : '#3a7aaa',
+        'text-wrap': 'ellipsis',
+        'text-max-width': 110,
+      }
+    },
+    {
+      selector: 'node[type="decision"]',
+      style: {
+        shape: 'diamond',
+        width: 110, height: 60,
+        label: 'data(label)',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'font-size': 10,
+        'color': '#e0ffe0',
+        'text-wrap': 'ellipsis',
+        'text-max-width': 90,
+        'background-color': ele => {
+          const c = ele.data('confidence');
+          if (c === 'high')   return '#1a3a1a';
+          if (c === 'low')    return '#3a2a10';
+          return '#2a2a10';
+        },
+        'border-width': 1.5,
+        'border-color': ele => {
+          const c = ele.data('confidence');
+          if (c === 'high')   return '#4cdf88';
+          if (c === 'low')    return '#e08040';
+          return '#e0c040';
+        },
+      }
+    },
+    {
+      selector: 'node:selected',
+      style: {
+        'border-width': 3,
+        'border-color': '#7ab8ff',
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        'curve-style': 'taxi',
+        'target-arrow-shape': 'triangle',
+        'arrow-scale': 1.2,
+        'line-color': ele => {
+          const l = ele.data('label');
+          if (l === 'informs') return '#5aaa5a';
+          if (l === 'decides') return '#9a6add';
+          return '#6070a0';
+        },
+        'target-arrow-color': ele => {
+          const l = ele.data('label');
+          if (l === 'informs') return '#5aaa5a';
+          if (l === 'decides') return '#9a6add';
+          return '#6070a0';
+        },
+        'label': 'data(label)',
+        'font-size': 9,
+        'color': '#888',
+        'text-rotation': 'autorotate',
+        width: 2,
+      }
+    }
+  ],
+  layout: { name: 'preset' },
+});
+
+// ── State ─────────────────────────────────────────────────────────────────
+let _graphData = null;
+let _fsmMode = false;
+
+// ── Render graph ─────────────────────────────────────────────────────────
+function renderGraph(data) {
+  _graphData = data;
+  document.getElementById('empty-state').style.display = 'none';
+
+  const elements = [];
+
+  for (const node of data.nodes) {
+    const isTC = node.type === 'tool_call';
+    elements.push({
+      group: 'nodes',
+      data: {
+        id: node.id,
+        type: node.type,
+        label: isTC ? node.tool_name : (node.decision_type || 'decision'),
+        status: node.status || 'ok',
+        confidence: node.confidence || 'medium',
+        _raw: node,
+      }
+    });
+  }
+  for (const edge of data.edges) {
+    elements.push({
+      group: 'edges',
+      data: {
+        id: `${edge.source}->${edge.target}`,
+        source: edge.source,
+        target: edge.target,
+        label: edge.label,
+      }
+    });
+  }
+
+  cy.elements().remove();
+  cy.add(elements);
+  cy.layout({ name: 'dagre', rankDir: 'TB', nodeSep: 40, rankSep: 80, edgeSep: 10 }).run();
+  cy.fit(30);
+
+  buildTimeline(data);
+}
+
+// ── Node click → panel ───────────────────────────────────────────────────
+cy.on('tap', 'node', evt => {
+  const d = evt.target.data('_raw');
+  if (!d) return;
+  showPanel(d);
+});
+
+cy.on('tap', evt => {
+  if (evt.target === cy) showPanel(null);
+});
+
+function showPanel(node) {
+  const body = document.getElementById('panel-body');
+  if (!node) {
+    body.innerHTML = '<p style="color:#666;font-size:12px">Click a node to inspect it.</p>';
+    return;
+  }
+
+  if (node.type === 'tool_call') {
+    const statusBadge = `<span class="badge badge-${node.status}">${node.status}</span>`;
+
+    // Build Visualizations section if this tool produces plots
+    const runId     = node.outputs?.run_id;
+    const plotTypes = TOOL_PLOT_TYPES[node.tool_name] || [];
+    let vizHtml = '';
+    if (runId && plotTypes.length > 0) {
+      const btns = plotTypes
+        .map(pt => `<button class="btn plot-btn" data-run-id="${escHtml(runId)}" data-plot-type="${escHtml(pt)}">${escHtml(pt.replace(/_/g,' '))}</button>`)
+        .join('');
+      vizHtml = `
+      <br>
+      <h3>Visualizations</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">${btns}</div>
+      <div id="plot-display"></div>`;
+    }
+
+    body.innerHTML = `
+      <h3>${escHtml(node.tool_name)}</h3>
+      <div class="kv"><span class="key">Status </span><span class="val">${statusBadge}</span></div>
+      <div class="kv"><span class="key">call_id </span><span class="val" style="font-family:monospace;font-size:10px">${escHtml(node.id)}</span></div>
+      <div class="kv"><span class="key">started_at </span><span class="val">${escHtml(node.started_at||'')}</span></div>
+      <div class="kv"><span class="key">duration </span><span class="val">${node.duration_s != null ? node.duration_s.toFixed(3)+'s' : '—'}</span></div>
+      ${node.error_msg ? `<div class="kv"><span class="key">error </span><span class="val" style="color:#ff6b6b">${escHtml(node.error_msg)}</span></div>` : ''}
+      <br>
+      <h3>Inputs</h3>
+      <pre>${escHtml(fmtJson(node.inputs))}</pre>
+      <br>
+      <h3>Outputs</h3>
+      <pre>${escHtml(fmtJson(node.outputs))}</pre>
+      ${vizHtml}
+    `;
+  } else {
+    const conf = node.confidence || 'medium';
+    body.innerHTML = `
+      <h3>${escHtml(node.decision_type || 'Decision')}</h3>
+      <div class="kv"><span class="key">confidence </span><span class="val"><span class="badge badge-${conf}">${conf}</span></span></div>
+      <div class="kv"><span class="key">decision_id </span><span class="val" style="font-family:monospace;font-size:10px">${escHtml(node.id)}</span></div>
+      <div class="kv"><span class="key">recorded_at </span><span class="val">${escHtml(node.recorded_at||'')}</span></div>
+      <br>
+      <h3>Reasoning</h3>
+      <pre>${escHtml(node.reasoning||'')}</pre>
+      <br>
+      <h3>Selected Action</h3>
+      <pre>${escHtml(node.selected_action||'')}</pre>
+      ${node.prior_call_id ? `<br><div class="kv"><span class="key">prior_call_id </span><span class="val" style="font-family:monospace;font-size:10px">${escHtml(node.prior_call_id)}</span></div>` : ''}
+    `;
+  }
+}
+
+// ── Timeline ─────────────────────────────────────────────────────────────
+const _tlTooltip = document.getElementById('tooltip');
+
+function buildTimeline(data) {
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  const toolCalls = data.nodes.filter(n => n.type === 'tool_call' && n.duration_s != null);
+  if (toolCalls.length === 0) return;
+
+  const maxDur = Math.max(...toolCalls.map(n => n.duration_s), 0.001);
+  const scale = 200; // max segment width px
+
+  for (const n of toolCalls) {
+    const w = Math.max(6, Math.round((n.duration_s / maxDur) * scale));
+    const color = n.status === 'error' ? '#7a2a2a' : '#1a4a7a';
+    const seg = document.createElement('div');
+    seg.className = 'tl-segment';
+    seg.style.width = w + 'px';
+    seg.style.background = color;
+    const tipText = `${n.tool_name} — ${n.duration_s.toFixed(3)}s`;
+    seg.addEventListener('mouseenter', () => {
+      _tlTooltip.textContent = tipText;
+      _tlTooltip.style.display = 'block';
+    });
+    seg.addEventListener('mousemove', e => {
+      _tlTooltip.style.left = (e.clientX + 14) + 'px';
+      _tlTooltip.style.top  = (e.clientY - 32) + 'px';
+    });
+    seg.addEventListener('mouseleave', () => {
+      _tlTooltip.style.display = 'none';
+    });
+    seg.addEventListener('click', () => {
+      cy.$(`#${CSS.escape(n.id)}`).select();
+      showPanel(n);
+    });
+    tl.appendChild(seg);
+  }
+}
+
+// ── FSM toggle ────────────────────────────────────────────────────────────
+document.getElementById('btn-fsm').addEventListener('click', () => {
+  _fsmMode = !_fsmMode;
+  document.getElementById('btn-fsm').classList.toggle('active', _fsmMode);
+  if (!_graphData) return;
+
+  if (_fsmMode) {
+    renderFSM(_graphData);
+  } else {
+    renderGraph(_graphData);
+  }
+});
+
+function renderFSM(data) {
+  // Collapse same-tool-name calls into state nodes
+  const toolCalls = data.nodes.filter(n => n.type === 'tool_call');
+  const stateCounts = {};
+  for (const n of toolCalls) {
+    stateCounts[n.tool_name] = (stateCounts[n.tool_name] || 0) + 1;
+  }
+
+  cy.elements().remove();
+  const elements = [];
+  const seen = new Set();
+
+  for (const n of toolCalls) {
+    if (!seen.has(n.tool_name)) {
+      seen.add(n.tool_name);
+      elements.push({
+        group: 'nodes',
+        data: {
+          id: `fsm-${n.tool_name}`,
+          type: 'tool_call',
+          label: `${n.tool_name}\n(×${stateCounts[n.tool_name]})`,
+          status: 'ok',
+          _raw: n,
+        }
+      });
+    }
+  }
+
+  // Add decision nodes as-is
+  for (const n of data.nodes.filter(n => n.type === 'decision')) {
+    elements.push({ group: 'nodes', data: { id: n.id, type: 'decision', label: n.decision_type, confidence: n.confidence, _raw: n }});
+  }
+
+  // Edges: remap tool_call IDs to fsm-X IDs, deduplicate
+  const edgesSeen = new Set();
+  for (const e of data.edges) {
+    const srcNode = data.nodes.find(n => n.id === e.source);
+    const tgtNode = data.nodes.find(n => n.id === e.target);
+    const src = srcNode?.type === 'tool_call' ? `fsm-${srcNode.tool_name}` : e.source;
+    const tgt = tgtNode?.type === 'tool_call' ? `fsm-${tgtNode.tool_name}` : e.target;
+    if (src === tgt) continue;
+    const key = `${src}→${tgt}:${e.label}`;
+    if (edgesSeen.has(key)) continue;
+    edgesSeen.add(key);
+    elements.push({ group: 'edges', data: { id: key, source: src, target: tgt, label: e.label }});
+  }
+
+  cy.add(elements);
+  cy.layout({ name: 'dagre', rankDir: 'TB', nodeSep: 50, rankSep: 100 }).run();
+  cy.fit(30);
+}
+
+// ── Toolbar buttons ───────────────────────────────────────────────────────
+document.getElementById('btn-fit').addEventListener('click', () => cy.fit(30));
+
+document.getElementById('btn-svg').addEventListener('click', () => {
+  if (typeof cy.svg !== 'function') { alert('cytoscape-svg plugin not loaded.'); return; }
+  const svg = cy.svg({ scale: 1, full: true });
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'provenance.svg';
+  a.click();
+});
+
+// ── File drop / pick ──────────────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+});
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+});
+
+function loadFile(file) {
+  document.getElementById('drop-label').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      renderGraph(data);
+    } catch (err) {
+      alert('Failed to parse JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Live server connection ────────────────────────────────────────────────
+// Use the page's own origin so fetches are same-origin (avoids CORS issues).
+// Override with ?url=http://... to point at a remote server.
+const BASE_URL = (() => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('url') || window.location.origin;
+})();
+
+async function fetchSessions() {
+  try {
+    const res = await fetch(`${BASE_URL}/sessions`);
+    if (!res.ok) return null;
+    const sessions = await res.json();
+    const sel = document.getElementById('session-select');
+    sel.innerHTML = '<option value="">— Live session —</option>';
+    for (const s of sessions) {
+      const calls = s.tool_call_count || 0;
+      const decs = s.decision_count || 0;
+      const opt = document.createElement('option');
+      opt.value = s.session_id;
+      opt.textContent = `${s.session_id} (${calls} calls, ${decs} decisions)`;
+      if (!calls && !decs) opt.style.color = '#666';
+      sel.appendChild(opt);
+    }
+    return sessions;
+  } catch {
+    return null; // Server not available — that's OK
+  }
+}
+
+document.getElementById('session-select').addEventListener('change', async e => {
+  const sid = e.target.value;
+  if (!sid) return;
+  try {
+    const res = await fetch(`${BASE_URL}/graph?session_id=${encodeURIComponent(sid)}`);
+    if (!res.ok) { alert('Failed to fetch graph.'); return; }
+    const data = await res.json();
+    renderGraph(data);
+    document.getElementById('drop-label').textContent = `Session: ${sid}`;
+  } catch (err) {
+    alert('Error fetching graph: ' + err.message);
+  }
+});
+
+document.getElementById('btn-refresh').addEventListener('click', fetchSessions);
+
+// Auto-load from ?session_id= param, or pick the most recent session with data
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const sid = params.get('session_id');
+  const sessions = await fetchSessions();
+
+  const target = sid || (() => {
+    // Find most recent session that has tool calls or decisions
+    if (!sessions) return null;
+    const active = sessions.filter(s => (s.tool_call_count || 0) + (s.decision_count || 0) > 0);
+    return active.length ? active[0].session_id : null;
+  })();
+
+  if (target) {
+    try {
+      const res = await fetch(`${BASE_URL}/graph?session_id=${encodeURIComponent(target)}`);
+      if (res.ok) {
+        const data = await res.json();
+        renderGraph(data);
+        document.getElementById('drop-label').textContent = `Session: ${target}`;
+        // Highlight in dropdown
+        const sel = document.getElementById('session-select');
+        if (sel) sel.value = target;
+      }
+    } catch {}
+  }
+})();
+
+// ── Plot button handling ──────────────────────────────────────────────────
+const TOOL_PLOT_TYPES = {
+  'run_aero_analysis':             ['lift_distribution', 'planform'],
+  'run_aerostruct_analysis':       ['lift_distribution', 'stress_distribution', 'planform'],
+  'compute_drag_polar':            ['drag_polar'],
+  'run_optimization':              ['opt_history', 'opt_dv_evolution', 'opt_comparison', 'planform'],
+  'compute_stability_derivatives': ['lift_distribution'],
+};
+
+document.getElementById('panel-body').addEventListener('click', async e => {
+  const btn = e.target.closest('.plot-btn');
+  if (!btn) return;
+  const runId   = btn.dataset.runId;
+  const plotType = btn.dataset.plotType;
+  const display = document.getElementById('plot-display');
+  if (!display) return;
+  display.innerHTML = '<span class="plot-loading">Loading…</span>';
+  try {
+    const res = await fetch(
+      `${BASE_URL}/plot?run_id=${encodeURIComponent(runId)}&plot_type=${encodeURIComponent(plotType)}`
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      display.innerHTML = `<span class="plot-error">Error: ${escHtml(err.error || String(res.status))}</span>`;
+    } else {
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      display.innerHTML = `<img src="${url}" alt="${escHtml(plotType)}">`;
+    }
+  } catch (err) {
+    display.innerHTML = `<span class="plot-error">Fetch error: ${escHtml(err.message)}</span>`;
+  }
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fmtJson(obj) {
+  if (obj == null) return '—';
+  try { return JSON.stringify(obj, null, 2); }
+  catch { return String(obj); }
+}
+</script>
 </body>
 </html>

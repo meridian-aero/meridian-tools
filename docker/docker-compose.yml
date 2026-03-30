@@ -4,4 +4,21 @@ services:
       context: ../packages/oas
       dockerfile: Dockerfile
     ports:
-      - "8001:8000"
+      - "8000:8000"
+      - "7654:7654"   # Provenance viewer / dashboard
+    volumes:
+      # Bind-mount host directory for persistent artifact storage.
+      # Docker creates the directory automatically if it doesn't exist.
+      - ./oas_data:/data
+    # Load secrets from .env (copy from .env.example and fill in values).
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Docker-specific overrides — always use HTTP, bind to all interfaces,
+      # and store artifacts in the bind-mounted host directory.
+      OAS_TRANSPORT: http
+      OAS_HOST: 0.0.0.0
+      OAS_DATA_DIR: /data
+      # Store provenance DB in the bind-mounted volume so it survives restarts.
+      OAS_PROV_DB: /data/provenance.db

@@ -616,24 +616,38 @@ wheels = [
 name = "hangar"
 version = "0.1.0"
 source = { virtual = "." }
+dependencies = [
+    { name = "hangar-oas" },
+    { name = "hangar-sdk" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hangar-oas", editable = "packages/oas" },
+    { name = "hangar-sdk", editable = "packages/sdk" },
+]
 
 [[package]]
 name = "hangar-oas"
 version = "0.1.0"
 source = { editable = "packages/oas" }
 dependencies = [
-    { name = "hangar-sdk" },
+    { name = "hangar-sdk", extra = ["all"] },
     { name = "matplotlib" },
     { name = "numpy" },
+    { name = "openaerostruct" },
     { name = "openmdao" },
+    { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "hangar-sdk", editable = "packages/sdk" },
+    { name = "hangar-sdk", extras = ["all"], editable = "packages/sdk" },
     { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "openmdao", specifier = ">=3.30" },
+    { name = "numpy", specifier = ">=1.21" },
+    { name = "openaerostruct", editable = "upstream/OpenAeroStruct" },
+    { name = "openmdao", specifier = ">=3.35,!=3.40" },
+    { name = "scipy", specifier = ">=1.7" },
 ]
 
 [[package]]
@@ -643,13 +657,46 @@ source = { editable = "packages/sdk" }
 dependencies = [
     { name = "fastmcp" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "httpx" },
+    { name = "itsdangerous" },
+    { name = "matplotlib" },
+    { name = "pyjwt", extra = ["crypto"] },
+    { name = "uvicorn" },
+]
+auth = [
+    { name = "httpx" },
+    { name = "pyjwt", extra = ["crypto"] },
+]
+http = [
+    { name = "itsdangerous" },
+    { name = "uvicorn" },
+]
+viz = [
+    { name = "matplotlib" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fastmcp", specifier = ">=2.0" },
+    { name = "httpx", marker = "extra == 'all'", specifier = ">=0.27" },
+    { name = "httpx", marker = "extra == 'auth'", specifier = ">=0.27" },
+    { name = "itsdangerous", marker = "extra == 'all'", specifier = ">=2.1" },
+    { name = "itsdangerous", marker = "extra == 'http'", specifier = ">=2.1" },
+    { name = "matplotlib", marker = "extra == 'all'" },
+    { name = "matplotlib", marker = "extra == 'viz'" },
     { name = "pydantic", specifier = ">=2.0" },
+    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'all'", specifier = ">=2.8" },
+    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'auth'", specifier = ">=2.8" },
+    { name = "python-dotenv", specifier = ">=1.0" },
+    { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.27" },
+    { name = "uvicorn", marker = "extra == 'http'", specifier = ">=0.27" },
 ]
+provides-extras = ["auth", "viz", "http", "all"]
 
 [[package]]
 name = "httpcore"
@@ -707,6 +754,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/49/3b30cad09e7771a4982d9975a8cbf64f00d4a1ececb53297f1d9a7be1b10/importlib_metadata-8.7.1.tar.gz", hash = "sha256:49fef1ae6440c182052f407c8d34a68f72efc36db9ca90dc0113398f2fdde8bb", size = 57107, upload-time = "2025-12-21T10:00:19.278Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/5e/f8e9a1d23b9c20a551a8a02ea3637b4642e22c2626e3a13a9a29cdea99eb/importlib_metadata-8.7.1-py3-none-any.whl", hash = "sha256:5a1f80bf1daa489495071efbb095d75a634cf28a8bc299581244063b53176151", size = 27865, upload-time = "2025-12-21T10:00:18.329Z" },
+]
+
+[[package]]
+name = "itsdangerous"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/cb/8ac0172223afbccb63986cc25049b154ecfb5e85932587206f42317be31d/itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173", size = 54410, upload-time = "2024-04-16T21:28:15.614Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/96/92447566d16df59b2a776c0fb82dbc4d9e07cd95062562af01e408583fc4/itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef", size = 16234, upload-time = "2024-04-16T21:28:14.499Z" },
 ]
 
 [[package]]
@@ -1134,6 +1190,48 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0c/fd/16d710c085d28ba4feaf29ac60c936c9d662e390344f94a6beaa2ac9899b/numpy-2.4.3-pp311-pypy311_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8e236dbda4e1d319d681afcbb136c0c4a8e0f1a5c58ceec2adebb547357fe857", size = 16729409, upload-time = "2026-03-09T07:58:47.972Z" },
     { url = "https://files.pythonhosted.org/packages/57/a7/b35835e278c18b85206834b3aa3abe68e77a98769c59233d1f6300284781/numpy-2.4.3-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:4b42639cdde6d24e732ff823a3fa5b701d8acad89c4142bc1d0bd6dc85200ba5", size = 12504685, upload-time = "2026-03-09T07:58:50.525Z" },
 ]
+
+[[package]]
+name = "openaerostruct"
+source = { editable = "upstream/OpenAeroStruct" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "openmdao" },
+    { name = "scipy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", marker = "extra == 'all'", specifier = ">=0.27" },
+    { name = "httpx", marker = "extra == 'http'", specifier = ">=0.27" },
+    { name = "itsdangerous", marker = "extra == 'all'", specifier = ">=2.1" },
+    { name = "itsdangerous", marker = "extra == 'http'", specifier = ">=2.1" },
+    { name = "matplotlib" },
+    { name = "mcp", extras = ["cli"], marker = "extra == 'all'", specifier = ">=1.0" },
+    { name = "mcp", extras = ["cli"], marker = "extra == 'http'", specifier = ">=1.0" },
+    { name = "mcp", extras = ["cli"], marker = "extra == 'mcp'", specifier = ">=1.0" },
+    { name = "mphys", marker = "extra == 'all'", specifier = ">=2.0.0" },
+    { name = "mphys", marker = "extra == 'mphys'", specifier = ">=2.0.0" },
+    { name = "numpy", specifier = ">=1.21" },
+    { name = "openmdao", specifier = ">=3.35,!=3.40" },
+    { name = "pygeo", marker = "extra == 'all'", specifier = ">=1.15.0" },
+    { name = "pygeo", marker = "extra == 'ffd'", specifier = ">=1.6.0" },
+    { name = "pygeo", marker = "extra == 'mphys'", specifier = ">=1.15.0" },
+    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'all'", specifier = ">=2.8" },
+    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'http'", specifier = ">=2.8" },
+    { name = "python-dotenv", marker = "extra == 'all'", specifier = ">=1.0" },
+    { name = "python-dotenv", marker = "extra == 'http'", specifier = ">=1.0" },
+    { name = "python-dotenv", marker = "extra == 'mcp'", specifier = ">=1.0" },
+    { name = "scipy", specifier = ">=1.7" },
+    { name = "sphinx-mdolab-theme", marker = "extra == 'all'" },
+    { name = "sphinx-mdolab-theme", marker = "extra == 'docs'" },
+    { name = "testflo", marker = "extra == 'all'" },
+    { name = "testflo", marker = "extra == 'test'" },
+    { name = "uvicorn", marker = "extra == 'all'", specifier = ">=0.27" },
+    { name = "uvicorn", marker = "extra == 'http'", specifier = ">=0.27" },
+]
+provides-extras = ["docs", "test", "ffd", "mphys", "mcp", "http", "all"]
 
 [[package]]
 name = "openapi-pydantic"

@@ -1,0 +1,30 @@
+# Caddyfile for reverse-proxying Hangar services.
+#
+# Usage:
+#   caddy run --config docker/Caddyfile
+#
+# This configuration provides TLS termination and basic auth for
+# production deployments. Adjust the domain and upstream ports as needed.
+#
+# For local development, access services directly on their exposed ports
+# (e.g. http://localhost:8000 for OAS, http://localhost:7654 for dashboard).
+
+{$HANGAR_DOMAIN:localhost} {
+	# OAS MCP server (streamable HTTP transport)
+	handle /oas/* {
+		reverse_proxy oas:8000
+	}
+
+	# OAS dashboard and provenance viewer
+	handle /dashboard* {
+		reverse_proxy oas:7654
+	}
+	handle /viewer* {
+		reverse_proxy oas:7654
+	}
+
+	# Default: return 404 for unmatched routes
+	handle {
+		respond "Not Found" 404
+	}
+}

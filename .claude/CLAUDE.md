@@ -7,17 +7,48 @@ in `packages/sdk/`.
 
 ## Namespace convention
 All packages use the `hangar.*` Python namespace (PEP 420 implicit namespace packages).
-- `hangar.sdk` — shared provenance, response envelopes, validation, session management
+- `hangar.sdk` — shared provenance, response envelopes, validation, session management,
+  artifacts, telemetry, auth, visualization, CLI framework
 - `hangar.oas` — OpenAeroStruct aerostructural analysis server
 - PyPI names use hyphens: `hangar-sdk`, `hangar-oas`
 - **Critical:** never place an `__init__.py` in `src/hangar/` — only at the leaf
   level (e.g. `src/hangar/oas/__init__.py`). This is what makes the namespace work.
 
 ## Source layout
-- `packages/sdk/` — hangar-sdk: provenance, response envelopes, validation,
-  session management, visualization
-- `packages/oas/` — hangar-oas: OpenAeroStruct aerostructural analysis server
-- `skills/` — cross-tool process skills (design study workflows, etc.)
+- `packages/sdk/` — hangar-sdk shared infrastructure:
+  - `provenance/` — SQLite DB, `@capture_tool` decorator, session graph export
+  - `envelope/` — versioned response envelopes (`make_envelope`, `make_error_envelope`)
+  - `session/` — session state management (surfaces, caching, pinning)
+  - `validation/` — `ValidationFinding` framework + user requirements assertions
+  - `artifacts/` — filesystem-backed artifact store for analysis runs
+  - `telemetry/` — structured logging with per-run log capture
+  - `auth/` — OIDC JWT authentication for MCP servers
+  - `viz/` — plotting (matplotlib), widget (Plotly), viewer (Cytoscape.js DAG)
+  - `cli/` — generic 3-mode CLI framework (interactive, one-shot, script)
+  - `errors.py` — typed error taxonomy (`HangarError`, `UserInputError`, etc.)
+  - `state.py` — module-level singletons (`sessions`, `artifacts`)
+  - `helpers.py` — shared utilities (`_resolve_run_id`, `_suppress_output`, etc.)
+
+- `packages/oas/` — hangar-oas OpenAeroStruct server:
+  - `server.py` — FastMCP entry point, tool registration
+  - `config/defaults.py` — flight conditions, mesh, material property defaults
+  - `mesh.py` — mesh generation and geometric transforms (sweep, dihedral, taper)
+  - `builders.py` — OpenMDAO problem assembly
+  - `connections.py` — OpenMDAO connect helpers
+  - `results.py` — result extraction from solved problems
+  - `summary.py` — physics interpretation and narratives
+  - `convergence.py` — optimization iteration tracking
+  - `validators.py` — input validation (mesh, flight conditions, DVs)
+  - `validation.py` — OAS-specific physics/numerics checks
+  - `cli.py` — OAS CLI registry builder
+  - `tools/geometry.py` — `create_surface`
+  - `tools/analysis.py` — `run_aero_analysis`, `run_aerostruct_analysis`, `compute_drag_polar`, `compute_stability_derivatives`
+  - `tools/optimization.py` — `run_optimization`
+  - `tools/session.py` — provenance, session, artifact, and observability tools
+  - `tools/resources.py` — MCP resources (reference guide, dashboard widget)
+  - `tools/prompts.py` — MCP prompts (guided workflows)
+
+- `skills/` — cross-tool process skills (design study, trade study, convergence, multi-tool)
 - `upstream/` — local clones of upstream tool repos (read-only reference, git-ignored)
 
 ## When implementing or modifying OAS tools
@@ -32,9 +63,12 @@ Key OAS entry points:
 - `openaerostruct/aerodynamics/` — VLM and aero components
 
 ## When implementing SDK infrastructure
-Read `packages/sdk/src/hangar/sdk/provenance/` for the provenance model.
-The middleware in `middleware.py` auto-captures every tool call — new tools
-get provenance for free if they use the `@tracked_tool` decorator.
+- `@capture_tool` decorator in `provenance/middleware.py` — auto-records every tool call
+- `make_envelope()` in `envelope/response.py` — wraps tool results in versioned schema
+- `ValidationFinding` in `validation/checks.py` — self-contained check framework
+  (intentionally decoupled from provenance/session for future range-safety extraction)
+- `ArtifactStore` in `artifacts/store.py` — JSON artifact persistence
+- `SessionManager` in `session/manager.py` — in-memory state + caching
 
 ## Known OAS failure modes (critical context)
 - OAS silently ignores unrecognized design variable names — always validate
@@ -51,15 +85,28 @@ get provenance for free if they use the `@tracked_tool` decorator.
 uv sync
 uv run python -m hangar.oas.server
 
+# CLI
+uv run oas-cli interactive
+uv run oas-cli run create_surface --name wing --span 10
+uv run oas-cli run-script workflow.json
+
 # Docker
 docker compose -f docker/docker-compose.yml up --build
 ```
 
 ## Testing
 ```bash
-uv run pytest packages/oas/tests/
+# All tests
+uv run pytest packages/sdk/tests/ packages/oas/tests/
+
+# SDK only
 uv run pytest packages/sdk/tests/
-uv run pytest tests/integration/
+
+# OAS only (includes golden physics)
+uv run pytest packages/oas/tests/
+
+# Skip slow integration tests
+uv run pytest -m "not slow"
 ```
 
 ## Adding a new tool
@@ -69,3 +116,4 @@ uv run pytest tests/integration/
 4. Import and use `hangar.sdk` for provenance, envelopes, validation
 5. Add upstream clone to `scripts/setup-upstream.sh`
 6. Add to `docker/docker-compose.yml`
+7. See `.claude/commands/new-tool.md` for detailed guide

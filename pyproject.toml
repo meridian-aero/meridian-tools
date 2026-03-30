@@ -3,6 +3,10 @@ name = "hangar"
 version = "0.1.0"
 description = "Agentic engineering analysis tools"
 requires-python = ">=3.11"
+dependencies = [
+    "hangar-sdk",
+    "hangar-oas",
+]
 
 [tool.uv.workspace]
 members = ["packages/*"]
@@ -10,3 +14,12 @@ members = ["packages/*"]
 [tool.uv.sources]
 hangar-sdk = { workspace = true }
 hangar-oas = { workspace = true }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "golden_physics: physics-invariant golden tests",
+    "golden_numerics: platform-dependent numeric baselines",
+    "parity: parity tests vs direct OAS API",
+]

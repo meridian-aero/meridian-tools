@@ -4,12 +4,17 @@ version = "0.1.0"
 description = "OpenAeroStruct MCP server for agentic analysis"
 requires-python = ">=3.11"
 dependencies = [
-    "hangar-sdk",
-    # "openaerostruct>=2.8",
-    "openmdao>=3.30",
-    "numpy",
+    "hangar-sdk[all]",
+    "openaerostruct",
+    "openmdao>=3.35,!=3.40",
+    "numpy>=1.21",
+    "scipy>=1.7",
     "matplotlib",
 ]
+
+[project.scripts]
+oas-server = "hangar.oas.server:main"
+oas-cli    = "hangar.oas.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -23,3 +28,12 @@ hangar-sdk = { workspace = true }
 # For development: use local upstream clone
 # Comment below and uncomment the openaerostruct dependency above for production
 openaerostruct = { path = "../../upstream/OpenAeroStruct", editable = true }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "golden_physics: physics-invariant golden tests",
+    "golden_numerics: platform-dependent numeric baselines",
+    "parity: parity tests vs direct OAS API",
+]
