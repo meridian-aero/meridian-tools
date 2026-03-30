@@ -25,15 +25,18 @@ without needing an MCP connection.
 ## Prerequisites
 
 ```bash
-# Install the package (oas-cli is a console_scripts entry point):
-uv pip install -e ".[mcp]"   # or: pip install -e ".[mcp]"
+# From the workspace root (installs all packages):
+uv sync
+
+# Or install the OAS package directly:
+uv pip install -e packages/oas/
 
 # Verify:
 oas-cli list-tools
 ```
 
 If `command not found`, the virtualenv is not activated or the package was not
-installed. You can also invoke via `python -m oas_mcp.cli <args>`.
+installed. You can also invoke via `python -m hangar.oas.cli <args>`.
 
 ## Global flags come BEFORE the subcommand
 

@@ -87,7 +87,7 @@ printf '{"tool":"create_surface","args":{"name":"wing","num_y":7}}\n
 ## Mode 2 — One-shot subcommands
 
 Each invocation is a standalone process. Surface definitions are persisted to
-`~/.oas_mcp/state/<workspace>.json` so multi-step workflows work across calls.
+`~/.hangar/state/<workspace>.json` so multi-step workflows work across calls.
 
 ### Naming convention
 
@@ -105,7 +105,7 @@ Tool names use underscores; subcommands use hyphens:
 ### Example — multi-step workflow
 
 ```bash
-# Step 1: create surface (args saved to ~/.oas_mcp/state/default.json)
+# Step 1: create surface (args saved to ~/.hangar/state/default.json)
 oas-cli create-surface --name wing --wing-type CRM --num-y 7 \
         --symmetry --with-viscous --CD0 0.015
 

@@ -77,7 +77,7 @@
           "id": "explains_state_persistence",
           "description": "Explains how surface state is saved between one-shot calls (mentions state file or workspace)",
           "type": "output_contains_any",
-          "values": [".oas_mcp/state", "state file", "workspace", "persist"]
+          "values": [".hangar/state", "state file", "workspace", "persist"]
         },
         {
           "id": "checks_convergence",

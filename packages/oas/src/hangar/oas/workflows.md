@@ -169,7 +169,7 @@ Final step — export the audit trail:
 
 ### Viewer
 
-Open oas_mcp/provenance/viewer/index.html in a browser.
+Open packages/sdk/src/hangar/sdk/viz/viewer/index.html in a browser.
   • Drop the exported JSON file onto the page, OR
   • Connect live: http://127.0.0.1:7654/viewer (started automatically with the server)
   • Click any node to inspect inputs/outputs or reasoning
