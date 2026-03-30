@@ -52,6 +52,14 @@ def _safe_json(kwargs: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Periodic graph flush
+# ---------------------------------------------------------------------------
+
+_flush_counter: dict[str, int] = {}
+_FLUSH_EVERY = 5
+
+
+# ---------------------------------------------------------------------------
 # Decorator
 # ---------------------------------------------------------------------------
 
@@ -120,6 +128,17 @@ def capture_tool(fn):
                         started_at,
                         duration_s,
                     )
+
+                    # Periodic graph flush
+                    count = _flush_counter.get(session_id, 0) + 1
+                    _flush_counter[session_id] = count
+                    if count >= _FLUSH_EVERY:
+                        _flush_counter[session_id] = 0
+                        try:
+                            from hangar.sdk.provenance.flush import flush_session_graph
+                            flush_session_graph(session_id)
+                        except Exception:
+                            pass
             except Exception:
                 pass  # Never swallow the original exception
 

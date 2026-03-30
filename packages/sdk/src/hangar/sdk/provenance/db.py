@@ -6,6 +6,7 @@ Migrated from: OpenAeroStruct/oas_mcp/provenance/db.py
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import sqlite3
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +109,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     notes        TEXT,
     oas_session_id TEXT,
     started_at   TEXT NOT NULL,
-    user         TEXT DEFAULT ''
+    user         TEXT DEFAULT '',
+    project      TEXT DEFAULT 'default'
 );
 
 CREATE TABLE IF NOT EXISTS tool_calls (
@@ -152,16 +156,34 @@ def init_db(db_path: Path | str | None = None) -> None:
     Parameters
     ----------
     db_path:
-        Path to the SQLite file.  If *None*, uses ``$OAS_PROV_DB`` or
-        ``~/.oas_provenance/sessions.db``.  Parent directories are created
-        automatically.
+        Path to the SQLite file.  If *None*, uses ``$OAS_PROV_DB``, then
+        falls back to ``$OAS_DATA_DIR/.provenance/sessions.db`` (co-located
+        with artifacts).  If the legacy ``~/.oas_provenance/sessions.db``
+        exists but the new default does not, the legacy location is used and
+        a warning is logged.  Parent directories are created automatically.
     """
     global _db_path
 
     if db_path is None:
-        db_path = Path(
-            os.environ.get("OAS_PROV_DB", Path.home() / ".oas_provenance" / "sessions.db")
-        )
+        env_val = os.environ.get("OAS_PROV_DB")
+        if env_val:
+            db_path = Path(env_val)
+        else:
+            from hangar.sdk.artifacts.store import _default_data_dir
+
+            new_default = _default_data_dir() / ".provenance" / "sessions.db"
+            old_default = Path.home() / ".oas_provenance" / "sessions.db"
+
+            if old_default.exists() and not new_default.exists():
+                logger.warning(
+                    "Provenance DB found at legacy location %s but not at new default %s. "
+                    "Using legacy location. Set OAS_PROV_DB=%s to silence this warning, "
+                    "or move the file to the new location.",
+                    old_default, new_default, old_default,
+                )
+                db_path = old_default
+            else:
+                db_path = new_default
     new_path = Path(db_path)
 
     # Close the existing per-thread connection before switching paths so that
@@ -180,11 +202,15 @@ def init_db(db_path: Path | str | None = None) -> None:
 
     conn = _get_conn()
     conn.executescript(_DDL)
-    # Migrate existing DBs that lack the user column.
+    # Migrate existing DBs that lack newer columns.
     try:
         conn.execute("SELECT user FROM sessions LIMIT 0")
     except Exception:
         conn.execute("ALTER TABLE sessions ADD COLUMN user TEXT DEFAULT ''")
+    try:
+        conn.execute("SELECT project FROM sessions LIMIT 0")
+    except Exception:
+        conn.execute("ALTER TABLE sessions ADD COLUMN project TEXT DEFAULT 'default'")
     conn.commit()
 
 
@@ -193,20 +219,21 @@ def record_session(
     notes: str = "",
     oas_session_id: str | None = None,
     user: str = "",
+    project: str = "default",
 ) -> None:
     """Insert a new provenance session record (ignore if already exists)."""
     conn = _get_conn()
     conn.execute(
         """
-        INSERT OR IGNORE INTO sessions(session_id, notes, oas_session_id, started_at, user)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO sessions(session_id, notes, oas_session_id, started_at, user, project)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (session_id, notes, oas_session_id, datetime.now(timezone.utc).isoformat(), user),
+        (session_id, notes, oas_session_id, datetime.now(timezone.utc).isoformat(), user, project),
     )
     conn.commit()
 
 
-def _ensure_session(session_id: str, user: str = "") -> None:
+def _ensure_session(session_id: str, user: str = "", project: str = "default") -> None:
     """Auto-create a session row if one does not already exist.
 
     Satisfies the FK constraint on tool_calls and decisions without requiring
@@ -215,10 +242,10 @@ def _ensure_session(session_id: str, user: str = "") -> None:
     conn = _get_conn()
     conn.execute(
         """
-        INSERT OR IGNORE INTO sessions(session_id, notes, oas_session_id, started_at, user)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO sessions(session_id, notes, oas_session_id, started_at, user, project)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (session_id, "auto-created", None, datetime.now(timezone.utc).isoformat(), user),
+        (session_id, "auto-created", None, datetime.now(timezone.utc).isoformat(), user, project),
     )
     conn.commit()
 
@@ -432,6 +459,35 @@ def get_session_graph(session_id: str) -> dict:
 
     session_meta = dict(session_row) if session_row else {"session_id": session_id}
     return {"session": session_meta, "nodes": nodes, "edges": edges}
+
+
+def update_session_project(session_id: str, project: str) -> None:
+    """Update the project field for an existing session."""
+    conn = _get_conn()
+    conn.execute(
+        "UPDATE sessions SET project = ? WHERE session_id = ?",
+        (project, session_id),
+    )
+    conn.commit()
+
+
+def get_session_meta(session_id: str) -> dict | None:
+    """Return session metadata, or *None* if the session does not exist."""
+    conn = _get_conn()
+    row = conn.execute(
+        "SELECT session_id, user, project, notes, started_at FROM sessions WHERE session_id = ?",
+        (session_id,),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def session_exists(session_id: str) -> bool:
+    """Return True if a session with the given ID exists in the provenance DB."""
+    conn = _get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM sessions WHERE session_id = ?", (session_id,)
+    ).fetchone()
+    return row is not None
 
 
 def get_session_owner(session_id: str) -> str:

@@ -129,6 +129,14 @@ async def graph_endpoint(request: Request) -> Response:
         graph = await asyncio.to_thread(get_session_graph, session_id)
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=500)
+
+    # Side-effect: flush graph file to artifact directory
+    try:
+        from hangar.sdk.provenance.flush import flush_session_graph
+        await asyncio.to_thread(flush_session_graph, session_id)
+    except Exception:
+        pass
+
     return Response(
         content=_dumps(graph),
         status_code=200,

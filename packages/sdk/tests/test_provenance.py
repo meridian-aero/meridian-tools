@@ -18,16 +18,26 @@ import numpy as np
 import pytest
 import pytest_asyncio
 
-from hangar.sdk.provenance.middleware import _prov_session_id, _safe_json, capture_tool
+from hangar.sdk.provenance.middleware import (
+    _FLUSH_EVERY,
+    _flush_counter,
+    _prov_session_id,
+    _safe_json,
+    capture_tool,
+)
 from hangar.sdk.provenance.db import (
     _next_seq,
     get_session_graph,
+    get_session_meta,
     init_db,
     list_sessions,
     record_decision,
     record_session,
     record_tool_call,
+    session_exists,
+    update_session_project,
 )
+from hangar.sdk.provenance.flush import GRAPH_FILENAME, flush_session_graph
 from hangar.oas.tools.session import export_session_graph, log_decision, start_session
 
 
@@ -330,8 +340,11 @@ async def test_log_decision_records_decision(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_export_session_graph_writes_file(tmp_path):
-    """export_session_graph writes JSON to disk and returns path."""
+async def test_export_session_graph_writes_file(tmp_path, monkeypatch):
+    """export_session_graph writes graph to artifact dir and returns pointer."""
+    data_dir = tmp_path / "data"
+    monkeypatch.setenv("OAS_DATA_DIR", str(data_dir))
+
     init_db(tmp_path / "prov.db")
     sess = await start_session(notes="export test")
     sid = sess["session_id"]
@@ -340,10 +353,238 @@ async def test_export_session_graph_writes_file(tmp_path):
     cid = _make_call_id()
     record_tool_call(cid, sid, 0, "create_surface", "{}", "{}", "ok", None, "2025-01-01T00:00:00+00:00", 0.1)
 
-    out = tmp_path / "graph.json"
-    result = await export_session_graph(session_id=sid, output_path=str(out))
+    result = await export_session_graph(session_id=sid)
 
-    assert out.exists()
-    assert result["path"] == str(out)
-    assert "nodes" in result
-    assert len(result["nodes"]) == 1
+    # Returns pointer, not full graph
+    assert "nodes" not in result
+    assert "edges" not in result
+    assert result["node_count"] == 1
+    assert result["edge_count"] == 0
+    assert result["session_id"] == sid
+
+    # Graph file exists on disk
+    graph_path = result["graph_path"]
+    assert graph_path is not None
+    assert Path(graph_path).exists()
+    assert GRAPH_FILENAME in graph_path
+
+
+# ---------------------------------------------------------------------------
+# flush_session_graph tests
+# ---------------------------------------------------------------------------
+
+
+def test_flush_session_graph_writes_file(tmp_path):
+    """flush_session_graph writes valid JSON to the artifact directory."""
+    import json
+
+    data_dir = tmp_path / "data"
+    init_db(tmp_path / "prov.db")
+    sid = _make_session()
+    record_session(sid, user="testuser", project="proj1")
+    cid = _make_call_id()
+    record_tool_call(cid, sid, 0, "create_surface", "{}", "{}", "ok", None, "2025-01-01T00:00:00+00:00", 0.1)
+
+    result = flush_session_graph(sid, data_dir=data_dir)
+
+    assert result["node_count"] == 1
+    assert result["edge_count"] == 0
+    assert result["path"] is not None
+
+    p = Path(result["path"])
+    assert p.exists()
+    graph = json.loads(p.read_text())
+    assert len(graph["nodes"]) == 1
+    assert "testuser" in result["path"]
+    assert "proj1" in result["path"]
+
+
+def test_flush_session_graph_idempotent(tmp_path):
+    """Calling flush twice succeeds and overwrites cleanly."""
+    data_dir = tmp_path / "data"
+    init_db(tmp_path / "prov.db")
+    sid = _make_session()
+    record_session(sid)
+
+    r1 = flush_session_graph(sid, data_dir=data_dir)
+    r2 = flush_session_graph(sid, data_dir=data_dir)
+
+    assert r1["path"] == r2["path"]
+    assert Path(r2["path"]).exists()
+
+
+def test_flush_session_graph_resolves_user_project_from_db(tmp_path):
+    """When user/project not passed, they are resolved from the DB."""
+    data_dir = tmp_path / "data"
+    init_db(tmp_path / "prov.db")
+    sid = _make_session()
+    record_session(sid, user="alice", project="wing_study")
+
+    result = flush_session_graph(sid, data_dir=data_dir)
+
+    assert "alice" in result["path"]
+    assert "wing_study" in result["path"]
+
+
+def test_flush_session_graph_empty_session(tmp_path):
+    """Flushing a session with no tool calls returns node_count=0."""
+    data_dir = tmp_path / "data"
+    init_db(tmp_path / "prov.db")
+    sid = _make_session()
+    record_session(sid)
+
+    result = flush_session_graph(sid, data_dir=data_dir)
+
+    assert result["node_count"] == 0
+    assert result["edge_count"] == 0
+    assert result["path"] is not None
+
+
+# ---------------------------------------------------------------------------
+# DB schema tests
+# ---------------------------------------------------------------------------
+
+
+def test_project_column_exists(tmp_path):
+    """The sessions table has a project column after init_db."""
+    init_db(tmp_path / "prov.db")
+    sid = _make_session()
+    record_session(sid, project="myproject")
+
+    meta = get_session_meta(sid)
+    assert meta is not None
+    assert meta["project"] == "myproject"
+
+
+def test_update_session_project(tmp_path):
+    """update_session_project changes the project in the DB."""
+    init_db(tmp_path / "prov.db")
+    sid = _make_session()
+    record_session(sid, project="old")
+
+    update_session_project(sid, "new")
+    meta = get_session_meta(sid)
+    assert meta["project"] == "new"
+
+
+def test_session_exists(tmp_path):
+    """session_exists returns correct boolean."""
+    init_db(tmp_path / "prov.db")
+    sid = _make_session()
+    assert not session_exists(sid)
+    record_session(sid)
+    assert session_exists(sid)
+
+
+# ---------------------------------------------------------------------------
+# start_session join tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_start_session_join_existing(tmp_path):
+    """start_session with an existing session_id joins instead of creating."""
+    init_db(tmp_path / "prov.db")
+    sess1 = await start_session(notes="original")
+    sid = sess1["session_id"]
+
+    sess2 = await start_session(session_id=sid)
+    assert sess2["session_id"] == sid
+    assert sess2["joined"] is True
+
+    # Only one session record in DB
+    sessions = list_sessions()
+    matches = [s for s in sessions if s["session_id"] == sid]
+    assert len(matches) == 1
+
+
+@pytest.mark.asyncio
+async def test_start_session_create_with_explicit_id(tmp_path):
+    """start_session with a new explicit session_id creates it."""
+    init_db(tmp_path / "prov.db")
+    result = await start_session(session_id="custom-id-123", notes="custom")
+    assert result["session_id"] == "custom-id-123"
+    assert result["joined"] is False
+    assert session_exists("custom-id-123")
+
+
+# ---------------------------------------------------------------------------
+# DB default location tests
+# ---------------------------------------------------------------------------
+
+
+def test_init_db_default_uses_data_dir(tmp_path, monkeypatch):
+    """Without OAS_PROV_DB, init_db uses $OAS_DATA_DIR/.provenance/."""
+    data_dir = tmp_path / "artifacts"
+    monkeypatch.setenv("OAS_DATA_DIR", str(data_dir))
+    monkeypatch.delenv("OAS_PROV_DB", raising=False)
+    # Ensure no legacy DB interferes
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path / "fakehome")
+
+    init_db()
+
+    expected = data_dir / ".provenance" / "sessions.db"
+    assert expected.exists()
+
+
+def test_init_db_legacy_fallback(tmp_path, monkeypatch):
+    """If legacy DB exists but new default doesn't, use legacy and warn."""
+    import logging
+
+    fake_home = tmp_path / "fakehome"
+    legacy_dir = fake_home / ".oas_provenance"
+    legacy_dir.mkdir(parents=True)
+    legacy_db = legacy_dir / "sessions.db"
+    # Create a minimal SQLite DB at the legacy location
+    import sqlite3
+    conn = sqlite3.connect(str(legacy_db))
+    conn.close()
+
+    data_dir = tmp_path / "artifacts"
+    monkeypatch.setenv("OAS_DATA_DIR", str(data_dir))
+    monkeypatch.delenv("OAS_PROV_DB", raising=False)
+    monkeypatch.setattr("pathlib.Path.home", lambda: fake_home)
+
+    init_db()
+
+    # The legacy DB should still be there and be usable
+    assert legacy_db.exists()
+
+
+# ---------------------------------------------------------------------------
+# Periodic middleware flush tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_capture_tool_periodic_flush(tmp_path, monkeypatch):
+    """@capture_tool flushes the graph every _FLUSH_EVERY calls."""
+    import hangar.sdk.provenance.middleware as mw
+
+    data_dir = tmp_path / "data"
+    monkeypatch.setenv("OAS_DATA_DIR", str(data_dir))
+    monkeypatch.setattr(mw, "_FLUSH_EVERY", 2)
+
+    init_db(tmp_path / "prov.db")
+    sid = _make_session()
+    record_session(sid, user="default", project="default")
+    token = _prov_session_id.set(sid)
+    mw._flush_counter.clear()
+
+    try:
+
+        @capture_tool
+        async def dummy_tool() -> dict:
+            return {"ok": True}
+
+        # Call 1: no flush yet
+        await dummy_tool()
+        graph_path = data_dir / "default" / "default" / sid / GRAPH_FILENAME
+        # After 1 call, graph may or may not exist (flush at count=2)
+
+        # Call 2: should trigger flush
+        await dummy_tool()
+        assert graph_path.exists(), "Graph should be flushed after 2 calls"
+    finally:
+        _prov_session_id.reset(token)
+        mw._flush_counter.clear()

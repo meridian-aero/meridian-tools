@@ -32,6 +32,8 @@ from hangar.sdk.provenance.db import (
     list_sessions,
     record_decision,
     record_session,
+    session_exists,
+    update_session_project,
 )
 
 from hangar.oas.validators import validate_safe_name
@@ -45,21 +47,36 @@ from hangar.oas.validators import validate_safe_name
 
 async def start_session(
     notes: Annotated[str, "Optional notes describing this provenance session"] = "",
+    session_id: Annotated[
+        str | None,
+        "Session ID to join (for cross-tool workflows). "
+        "If None, a new session is created. If the ID already exists, "
+        "this server joins the existing session.",
+    ] = None,
 ) -> dict:
     """Start a new provenance session and set it as the current session.
 
-    Returns ``{session_id, started_at}``.  Call this at the beginning of a
+    Returns ``{session_id, started_at, joined}``.  Call this at the beginning of a
     workflow to group all subsequent tool calls under a named session.
+
+    Pass an existing ``session_id`` to join a session created by another tool
+    server (e.g., for cross-tool workflows where OAS and OCP share provenance).
     """
-    session_id = f"sess-{uuid.uuid4().hex[:12]}"
+    joined = False
+    if session_id is not None and session_exists(session_id):
+        joined = True
+    elif session_id is None:
+        session_id = f"sess-{uuid.uuid4().hex[:12]}"
+
     started_at = datetime.now(timezone.utc).isoformat()
-    record_session(session_id, notes=notes, user=get_current_user())
+    if not joined:
+        record_session(session_id, notes=notes, user=get_current_user())
     # Set module-level var so all subsequent tool calls (separate asyncio tasks)
     # are recorded under this session.
     set_server_session_id(session_id)
     # Also set ContextVar for test isolation (has priority over module-level).
     _prov_session_id.set(session_id)
-    return {"session_id": session_id, "started_at": started_at}
+    return {"session_id": session_id, "started_at": started_at, "joined": joined}
 
 
 async def log_decision(
@@ -104,42 +121,41 @@ async def export_session_graph(
         str | None,
         "Session ID to export (None = current session)",
     ] = None,
-    output_path: Annotated[
-        str | None,
-        "File path to write the JSON graph (None = return only, don't write file)",
-    ] = None,
 ) -> dict:
     """Export the provenance graph for a session as a JSON dict.
 
-    Returns ``{session, nodes, edges, path}`` where *path* is the output file
-    path (or null if not written).  Load the JSON into the provenance viewer
-    to visualise the DAG.
+    Returns ``{session_id, graph_path, viewer_url, node_count, edge_count}``
+    where *graph_path* is the auto-generated file in the artifact directory.
+    Load the JSON into the provenance viewer to visualise the DAG.
     """
+    from hangar.sdk.provenance.flush import flush_session_graph
+
     sid = session_id or _get_session_id()
-    graph = get_session_graph(sid)
 
-    written_path: str | None = None
-    if output_path is not None:
-        p = Path(output_path)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(_dumps(graph), encoding="utf-8")
-        written_path = str(p)
+    user = get_current_user()
+    try:
+        session = _sessions.get(sid)
+        project = session.project
+    except Exception:
+        project = None
 
-    # Include viewer URL so agents can surface it to users
+    flush_result = flush_session_graph(sid, user=user, project=project)
+
     viewer_url: str | None = None
-    dashboard_hint: str | None = None
     try:
         base = _get_viewer_base_url()
         if base:
             viewer_url = f"{base}/viewer?session_id={sid}"
-            dashboard_hint = (
-                f"View this session's provenance graph at: {viewer_url}\n"
-                f"Run dashboards are at: {base}/dashboard?run_id=<run_id>"
-            )
     except Exception:
         pass
 
-    return {**graph, "path": written_path, "viewer_url": viewer_url, "dashboard_hint": dashboard_hint}
+    return {
+        "session_id": sid,
+        "graph_path": flush_result.get("path"),
+        "viewer_url": viewer_url,
+        "node_count": flush_result.get("node_count", 0),
+        "edge_count": flush_result.get("edge_count", 0),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -153,14 +169,32 @@ async def reset(
 ) -> dict:
     """Reset sessions and cached OpenMDAO problems.
 
+    Before clearing, the provenance graph is flushed to disk for each
+    active session so that a complete record is preserved.
+
     If session_id is provided, only that session is cleared.  If None, all
     sessions are cleared.
     """
+    from hangar.sdk.provenance.flush import flush_session_graph
+
+    user = get_current_user()
+
     if session_id is None:
+        # Flush the current session before clearing all
+        try:
+            current_sid = _get_session_id()
+            if current_sid and current_sid != "default":
+                flush_session_graph(current_sid, user=user)
+        except Exception:
+            pass
         _sessions.reset()
         return {"status": "All sessions reset", "cleared": "all"}
     else:
         session = _sessions.get(session_id)
+        try:
+            flush_session_graph(session_id, user=user, project=session.project)
+        except Exception:
+            pass
         session.clear()
         return {"status": f"Session '{session_id}' reset", "cleared": session_id}
 
@@ -279,6 +313,14 @@ async def configure_session(
 
     if updates:
         session.configure(**updates)
+
+    # Sync project to provenance DB so flush_session_graph can resolve it.
+    if project is not None:
+        try:
+            prov_sid = _get_session_id()
+            update_session_project(prov_sid, project)
+        except Exception:
+            pass  # Best-effort; provenance DB may not be initialised
 
     if requirements is not None:
         session.set_requirements(requirements)

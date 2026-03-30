@@ -336,6 +336,12 @@ class _ProvHandler(BaseHTTPRequestHandler):
             try:
                 graph = get_session_graph(session_id)
                 self._json(graph)
+                # Side-effect: flush graph file to artifact directory
+                try:
+                    from hangar.sdk.provenance.flush import flush_session_graph
+                    flush_session_graph(session_id)
+                except Exception:
+                    pass
             except Exception as exc:
                 self._error(500, str(exc))
         elif path == "/sessions":
