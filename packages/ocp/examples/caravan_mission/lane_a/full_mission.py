@@ -8,6 +8,7 @@ import contextlib
 import io
 
 import sys, os
+os.environ["OPENMDAO_REPORTS"] = "0"
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from shared import MISSION_FULL
 
