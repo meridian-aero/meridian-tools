@@ -46,7 +46,7 @@ Every package shares the `hangar` Python namespace ([PEP 420](https://peps.pytho
 
 ```bash
 # Clone and set up
-git clone https://github.com/<org>/the-hangar && cd the-hangar
+git clone https://github.com/muroc-aero/the-hangar && cd the-hangar
 uv sync
 
 # Run the OAS server
