@@ -17,9 +17,29 @@ else
     git -C "$UPSTREAM_DIR/OpenAeroStruct" pull
 fi
 
-# Future tools:
-# echo "Cloning OpenConcept..."
-# git clone https://github.com/mdolab/openconcept "$UPSTREAM_DIR/openconcept"
+echo "Cloning OpenConcept..."
+if [ ! -d "$UPSTREAM_DIR/openconcept" ]; then
+    git clone https://github.com/mdolab/openconcept "$UPSTREAM_DIR/openconcept"
+else
+    echo "  Already exists, pulling latest..."
+    git -C "$UPSTREAM_DIR/openconcept" pull
+fi
+
+echo "Cloning pyCycle..."
+if [ ! -d "$UPSTREAM_DIR/pyCycle" ]; then
+    git clone https://github.com/OpenMDAO/pyCycle "$UPSTREAM_DIR/pyCycle"
+else
+    echo "  Already exists, pulling latest..."
+    git -C "$UPSTREAM_DIR/pyCycle" pull
+fi
+
+echo "Cloning AeroSandbox..."
+if [ ! -d "$UPSTREAM_DIR/AeroSandbox" ]; then
+    git clone https://github.com/peterdsharpe/AeroSandbox "$UPSTREAM_DIR/AeroSandbox"
+else
+    echo "  Already exists, pulling latest..."
+    git -C "$UPSTREAM_DIR/AeroSandbox" pull
+fi
 
 echo "Done. Upstream repos are in upstream/ (git-ignored)."
 echo "To use editable installs, uncomment the [tool.uv.sources] line in packages/oas/pyproject.toml"
