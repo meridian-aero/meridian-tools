@@ -1,0 +1,45 @@
+[
+  {
+    "tool": "create_surface",
+    "args": {
+      "name": "wing",
+      "wing_type": "rect",
+      "num_x": 11,
+      "num_y": 35,
+      "span": 10.0,
+      "root_chord": 1.0,
+      "symmetry": true,
+      "span_cos_spacing": 1.0,
+      "chord_cos_spacing": 1.0,
+      "S_ref_type": "projected",
+      "chord_cp": [1, 1, 1],
+      "CL0": 0.0,
+      "CD0": 0.0,
+      "with_viscous": false,
+      "with_wave": false,
+      "c_max_t": 0.303
+    }
+  },
+  {
+    "tool": "run_optimization",
+    "args": {
+      "surfaces": ["wing"],
+      "analysis_type": "aero",
+      "objective": "CD",
+      "objective_scaler": 1e4,
+      "design_variables": [
+        {"name": "alpha", "lower": -10.0, "upper": 15.0},
+        {"name": "chord", "lower": 0.001, "upper": 5.0}
+      ],
+      "constraints": [
+        {"name": "CL", "equals": 0.5},
+        {"name": "S_ref", "equals": 10.0}
+      ],
+      "velocity": 248.136,
+      "alpha": 5.0,
+      "Mach_number": 0.0,
+      "reynolds_number": 1e6,
+      "density": 0.38
+    }
+  }
+]
