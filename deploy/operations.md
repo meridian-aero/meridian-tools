@@ -104,6 +104,36 @@ docker compose -f docker-compose.prod.yml exec postgres \
 cp -r ~/hangar/hangar_data ~/hangar_data_backup_$(date +%Y%m%d)
 ```
 
+## Landing page
+
+The landing page at `mcp.lakesideai.dev/` is served by Caddy from static files.
+The Caddy container must mount the landing directory from the repo:
+
+```yaml
+# In ~/caddy/docker-compose.yml, add to caddy volumes:
+- ~/hangar/repo/deploy/landing:/srv/landing:ro
+```
+
+After adding the volume:
+
+```bash
+cd ~/caddy && docker compose up -d caddy
+```
+
+To update the landing page after a `git pull`, no action is needed &mdash;
+Caddy serves directly from the repo directory.
+
+### Health endpoints
+
+Each MCP server exposes `GET /healthz` (unauthenticated) returning:
+
+```json
+{"status": "ok", "server": "oas", "version": "0.1.0"}
+```
+
+The landing page JS polls these at `/oas/healthz`, `/ocp/healthz`, `/pyc/healthz`
+every 30 seconds to show live status indicators.
+
 ## Nuclear restart (rebuild everything from scratch)
 
 ```bash

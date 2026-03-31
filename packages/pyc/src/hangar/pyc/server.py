@@ -203,7 +203,12 @@ def main():
             ) from exc
 
         mcp_asgi = mcp.streamable_http_app()
-        uvicorn.run(mcp_asgi, host=args.host, port=args.port)
+
+        # Add unauthenticated /healthz endpoint
+        from hangar.sdk.health import add_healthz
+        app = add_healthz(mcp_asgi, server_name="pyc")
+
+        uvicorn.run(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

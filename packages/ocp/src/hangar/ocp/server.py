@@ -261,6 +261,11 @@ def main():
                 "uvicorn is required for HTTP transport."
             ) from exc
         app = mcp.streamable_http_app()
+
+        # Add unauthenticated /healthz endpoint
+        from hangar.sdk.health import add_healthz
+        app = add_healthz(app, server_name="ocp")
+
         uvicorn.run(app, host=args.host, port=args.port)
 
 

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Hangar - Engineering MCP Servers</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0f14;--bg2:#111820;--bg3:#171f2a;
+  --fg:#e2e8f0;--fg2:#94a3b8;--fg3:#64748b;
+  --accent:#38bdf8;--accent2:#0ea5e9;--accent-dim:#1e3a5f;
+  --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
+  --border:#1e293b;--radius:10px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --mono:'SF Mono',SFMono-Regular,ui-monospace,'Cascadia Code','Fira Code',Menlo,monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--fg);line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.container{max-width:1100px;margin:0 auto;padding:0 24px}
+
+/* ---- NAV ---- */
+nav{position:sticky;top:0;z-index:100;background:rgba(11,15,20,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 0}
+nav .container{display:flex;align-items:center;justify-content:space-between}
+nav .wordmark{font-size:1.1rem;font-weight:700;letter-spacing:.04em;color:var(--fg)}
+nav .wordmark span{color:var(--accent)}
+nav .links{display:flex;gap:24px;font-size:.875rem;color:var(--fg2)}
+nav .links a{color:var(--fg2)}
+nav .links a:hover{color:var(--fg)}
+
+/* ---- HERO ---- */
+.hero{padding:80px 0 64px;text-align:center}
+.hero h1{font-size:3rem;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-bottom:16px}
+.hero h1 span{color:var(--accent)}
+.hero .tagline{font-size:1.25rem;color:var(--fg2);max-width:640px;margin:0 auto 36px}
+.status-bar{display:flex;justify-content:center;gap:32px;flex-wrap:wrap}
+.status-item{display:flex;align-items:center;gap:8px;font-size:.9rem;font-weight:500;color:var(--fg2)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--fg3);transition:background .3s}
+.dot.ok{background:var(--green);box-shadow:0 0 8px rgba(34,197,94,.4)}
+.dot.err{background:var(--red);box-shadow:0 0 8px rgba(239,68,68,.4)}
+.dot.warn{background:var(--amber);box-shadow:0 0 8px rgba(245,158,11,.4)}
+
+/* ---- SECTIONS ---- */
+section{padding:64px 0}
+section h2{font-size:1.75rem;font-weight:700;margin-bottom:8px}
+section .subtitle{color:var(--fg2);margin-bottom:40px;font-size:1.05rem}
+
+/* ---- SERVER CARDS ---- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:28px;transition:border-color .2s}
+.card:hover{border-color:var(--accent-dim)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-head h3{font-size:1.15rem;font-weight:700}
+.card-head .badge{font-size:.75rem;padding:3px 10px;border-radius:20px;background:var(--bg3);color:var(--fg3);font-weight:500}
+.card p{color:var(--fg2);font-size:.925rem;margin-bottom:16px}
+.card .tools{font-size:.8rem;color:var(--fg3);margin-bottom:12px}
+.card .endpoint{font-family:var(--mono);font-size:.8rem;color:var(--accent);background:var(--bg3);padding:6px 12px;border-radius:6px;display:block;word-break:break-all}
+
+/* ---- CONNECT ---- */
+.tabs{display:flex;gap:4px;margin-bottom:0}
+.tab{padding:8px 20px;font-size:.85rem;font-weight:500;background:var(--bg3);color:var(--fg3);border:1px solid var(--border);border-bottom:none;border-radius:var(--radius) var(--radius) 0 0;cursor:pointer;transition:background .15s,color .15s}
+.tab.active{background:var(--bg2);color:var(--fg);border-color:var(--border)}
+.tab-panels{background:var(--bg2);border:1px solid var(--border);border-radius:0 var(--radius) var(--radius) var(--radius);padding:24px;position:relative}
+.panel{display:none}
+.panel.active{display:block}
+.panel pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:.85rem;line-height:1.7;color:var(--fg2)}
+.panel p{color:var(--fg2);font-size:.925rem;margin-bottom:12px}
+.copy-btn{position:absolute;top:32px;right:32px;background:var(--bg3);border:1px solid var(--border);color:var(--fg3);padding:5px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:var(--font);transition:color .15s}
+.copy-btn:hover{color:var(--fg)}
+.auth-note{margin-top:16px;padding:12px 16px;background:var(--bg);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;font-size:.875rem;color:var(--fg2)}
+
+/* ---- ABOUT (blog) ---- */
+.article{max-width:760px;margin:0 auto}
+.article .meta{font-size:.85rem;color:var(--fg3);margin-bottom:24px}
+.article h3{font-size:1.3rem;font-weight:700;margin:32px 0 12px}
+.article p{color:var(--fg2);font-size:1rem;margin-bottom:16px}
+.article ul{color:var(--fg2);margin:0 0 16px 24px}
+.article li{margin-bottom:6px}
+.article .highlight{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin:24px 0;color:var(--fg)}
+
+/* ---- CASE STUDIES ---- */
+.studies{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.study{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center}
+.study .tbd{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:600;margin-bottom:8px}
+.study h3{font-size:1.05rem;font-weight:600;color:var(--fg2);margin-bottom:8px}
+.study p{font-size:.875rem;color:var(--fg3)}
+
+/* ---- FOOTER ---- */
+footer{border-top:1px solid var(--border);padding:32px 0;text-align:center;font-size:.85rem;color:var(--fg3)}
+footer a{color:var(--fg3)}
+footer .sep{margin:0 8px;opacity:.4}
+
+/* ---- RESPONSIVE ---- */
+@media(max-width:640px){
+  .hero h1{font-size:2rem}
+  .hero .tagline{font-size:1rem}
+  section{padding:48px 0}
+  nav .links{gap:16px;font-size:.8rem}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="container">
+    <div class="wordmark"><span>THE</span> HANGAR</div>
+    <div class="links">
+      <a href="#servers">Servers</a>
+      <a href="#connect">Connect</a>
+      <a href="#about">About</a>
+      <a href="#studies">Case Studies</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <h1>Engineering Analysis,<br><span>Tool-Called.</span></h1>
+    <p class="tagline">Open-source MCP servers that give AI agents access to real aerospace engineering tools &mdash; aerodynamics, structures, propulsion, and mission design.</p>
+    <div class="status-bar">
+      <div class="status-item"><span class="dot" id="dot-oas"></span> OAS</div>
+      <div class="status-item"><span class="dot" id="dot-ocp"></span> OCP</div>
+      <div class="status-item"><span class="dot" id="dot-pyc"></span> PYC</div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVERS -->
+<section id="servers">
+  <div class="container">
+    <h2>Servers</h2>
+    <p class="subtitle">Three MCP servers, each wrapping a proven open-source analysis framework.</p>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-head">
+          <h3>OAS &mdash; OpenAeroStruct</h3>
+          <span class="badge" id="badge-oas">--</span>
+        </div>
+        <p>Aerostructural analysis and optimization of lifting surfaces. Coupled VLM aerodynamics with finite-element structures for rapid wing design exploration.</p>
+        <div class="tools">~20 tools &middot; geometry, aero analysis, aerostructural analysis, drag polars, stability derivatives, optimization</div>
+        <code class="endpoint">https://mcp.lakesideai.dev/oas/mcp</code>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>OCP &mdash; OpenConcept</h3>
+          <span class="badge" id="badge-ocp">--</span>
+        </div>
+        <p>Aircraft conceptual design and mission analysis. Evaluate fuel burn, takeoff performance, and hybrid-electric propulsion architectures across full mission profiles.</p>
+        <div class="tools">~15 tools &middot; aircraft templates, propulsion architecture, mission analysis, parameter sweeps, optimization</div>
+        <code class="endpoint">https://mcp.lakesideai.dev/ocp/mcp</code>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>PYC &mdash; pyCycle</h3>
+          <span class="badge" id="badge-pyc">--</span>
+        </div>
+        <p>Gas turbine engine cycle analysis. Design-point sizing and off-design performance evaluation for jet engines with full thermodynamic modeling.</p>
+        <div class="tools">~13 tools &middot; engine creation, design-point analysis, off-design sweeps, TSFC &amp; thrust computation</div>
+        <code class="endpoint">https://mcp.lakesideai.dev/pyc/mcp</code>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CONNECT -->
+<section id="connect">
+  <div class="container">
+    <h2>Connect</h2>
+    <p class="subtitle">Add the servers to your AI client in seconds.</p>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('claude-code')">Claude Code</button>
+      <button class="tab" onclick="showTab('claude-ai')">claude.ai</button>
+      <button class="tab" onclick="showTab('codex')">Codex</button>
+    </div>
+    <div class="tab-panels">
+      <button class="copy-btn" onclick="copyCode()">Copy</button>
+
+      <div class="panel active" id="panel-claude-code">
+        <pre><code>claude mcp add --transport http oas https://mcp.lakesideai.dev/oas/mcp
+claude mcp add --transport http ocp https://mcp.lakesideai.dev/ocp/mcp
+claude mcp add --transport http pyc https://mcp.lakesideai.dev/pyc/mcp</code></pre>
+        <p>Start a Claude Code session &mdash; the tools are available immediately.</p>
+      </div>
+
+      <div class="panel" id="panel-claude-ai">
+        <p>1. Go to <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a></p>
+        <p>2. <strong>Settings</strong> &rarr; <strong>Integrations</strong> &rarr; <strong>Add MCP Server</strong></p>
+        <p>3. Enter the URL for the tool you want:</p>
+        <pre><code>https://mcp.lakesideai.dev/oas/mcp
+https://mcp.lakesideai.dev/ocp/mcp
+https://mcp.lakesideai.dev/pyc/mcp</code></pre>
+        <p>4. Sign in when redirected to Keycloak. Repeat for each tool.</p>
+      </div>
+
+      <div class="panel" id="panel-codex">
+        <pre><code>codex mcp add oas --url https://mcp.lakesideai.dev/oas/mcp
+codex mcp add ocp --url https://mcp.lakesideai.dev/ocp/mcp
+codex mcp add pyc --url https://mcp.lakesideai.dev/pyc/mcp
+
+# Authenticate each server:
+codex mcp login oas --scopes mcp:tools
+codex mcp login ocp --scopes mcp:tools
+codex mcp login pyc --scopes mcp:tools</code></pre>
+      </div>
+    </div>
+
+    <div class="auth-note">
+      All servers use Keycloak OIDC. On first connection, your browser will open for login. You can sign in with Google or credentials provided by an admin.
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="container">
+    <div class="article">
+      <h2>What Is The Hangar?</h2>
+      <div class="meta">March 2026 &middot; Lakeside AI</div>
+
+      <p>The Hangar is an open-source project that bridges the gap between AI agents and real engineering analysis tools. Instead of asking an AI to <em>guess</em> at aerodynamic performance or <em>approximate</em> structural loads, The Hangar lets it <em>compute</em> them &mdash; using the same validated solvers that engineers rely on.</p>
+
+      <h3>The Problem</h3>
+      <p>Engineering analysis tools are powerful but have steep learning curves. Setting up an OpenMDAO problem, defining mesh parameters, connecting subsystems, and interpreting solver output requires deep domain expertise. This creates a bottleneck: the tools exist, but the barrier to entry keeps them out of reach for rapid exploration, early-stage design, and cross-disciplinary collaboration.</p>
+
+      <h3>How It Works</h3>
+      <p>The Hangar wraps proven open-source analysis frameworks as <strong>MCP (Model Context Protocol) servers</strong>. MCP is an open standard that lets AI applications call external tools with structured inputs and outputs. Each Hangar server exposes a set of tools that an AI agent can invoke:</p>
+
+      <ul>
+        <li><strong>Define geometry</strong> &mdash; create a wing with specific span, chord, sweep, and thickness distributions</li>
+        <li><strong>Run analysis</strong> &mdash; compute lift, drag, structural stresses, fuel burn, or engine thrust at specific flight conditions</li>
+        <li><strong>Optimize</strong> &mdash; let a gradient-based optimizer find the best design variables subject to engineering constraints</li>
+        <li><strong>Explore the design space</strong> &mdash; sweep parameters, compare architectures, and build intuition through computed results</li>
+      </ul>
+
+      <p>Every tool call returns a structured response with results, physics validation checks, and a provenance trail linking decisions to data.</p>
+
+      <div class="highlight">
+        <strong>The key insight:</strong> AI agents are excellent at navigating complex tool interfaces, interpreting results in context, and iterating through design spaces &mdash; exactly the workflow that makes engineering analysis tools hard to use manually. The Hangar turns the AI into a capable engineering analyst that can set up, run, and interpret real simulations.
+      </div>
+
+      <h3>The Tool Chain</h3>
+      <p>All three analysis servers build on the <a href="https://openmdao.org" target="_blank" rel="noopener">OpenMDAO</a> ecosystem &mdash; NASA's open-source framework for multidisciplinary design, analysis, and optimization:</p>
+
+      <ul>
+        <li><strong>OpenAeroStruct</strong> (OAS) &mdash; aerostructural analysis using vortex-lattice aerodynamics coupled with finite-element structures. Ideal for wing design studies, trade-offs between aerodynamic and structural performance, and rapid configuration exploration.</li>
+        <li><strong>OpenConcept</strong> (OCP) &mdash; aircraft conceptual design with mission analysis across full flight profiles. Supports conventional and hybrid-electric propulsion architectures, enabling comparative studies of next-generation aircraft concepts.</li>
+        <li><strong>pyCycle</strong> (PYC) &mdash; thermodynamic cycle analysis for gas turbine engines. Design-point sizing and off-design performance evaluation with full component-level modeling.</li>
+      </ul>
+
+      <h3>What This Enables</h3>
+      <p>With The Hangar, an AI agent can conduct engineering workflows that previously required hours of setup:</p>
+
+      <ul>
+        <li><strong>Design space exploration</strong> &mdash; "How does fuel burn change if we increase aspect ratio from 9 to 14?" becomes a single conversation turn.</li>
+        <li><strong>Architecture comparison</strong> &mdash; "Compare a conventional turboprop against a series-hybrid for a 500 nmi regional mission" produces computed results, not speculation.</li>
+        <li><strong>Multi-tool analysis</strong> &mdash; size an engine with pyCycle, feed its performance into an OpenConcept mission, and optimize the wing with OpenAeroStruct &mdash; all in one session.</li>
+        <li><strong>Optimization</strong> &mdash; set up gradient-based optimization with real design variables and engineering constraints, then interpret what the optimizer found and why.</li>
+      </ul>
+
+      <p>The Hangar doesn't replace engineering judgment &mdash; it amplifies it. By removing the boilerplate between an engineer's question and a computed answer, it makes iterative analysis practical at the speed of conversation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CASE STUDIES -->
+<section id="studies">
+  <div class="container">
+    <h2>Case Studies</h2>
+    <p class="subtitle">Real engineering workflows powered by The Hangar.</p>
+    <div class="studies">
+
+      <div class="study">
+        <div class="tbd">Coming Soon</div>
+        <h3>Regional Aircraft Wing Optimization</h3>
+        <p>Aerostructural optimization of a 28m-span wing for minimum fuel burn with structural constraints.</p>
+      </div>
+
+      <div class="study">
+        <div class="tbd">Coming Soon</div>
+        <h3>Hybrid-Electric Architecture Trade Study</h3>
+        <p>Comparing conventional vs. series-hybrid propulsion across a range of mission profiles with OpenConcept.</p>
+      </div>
+
+      <div class="study">
+        <div class="tbd">Coming Soon</div>
+        <h3>Engine-Airframe Integration</h3>
+        <p>Multi-tool workflow: pyCycle engine sizing feeding into OpenConcept mission analysis with OAS wing design.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    Lakeside AI <span class="sep">|</span>
+    <a href="https://github.com/lakesideai/the-hangar" target="_blank" rel="noopener">GitHub</a>
+    <span class="sep">|</span> Powered by FastMCP + OpenMDAO
+  </div>
+</footer>
+
+<script>
+/* ---- Tab switching ---- */
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+/* ---- Copy code ---- */
+function copyCode() {
+  const active = document.querySelector('.panel.active pre code');
+  if (!active) return;
+  navigator.clipboard.writeText(active.textContent).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+/* ---- Health polling ---- */
+const servers = ['oas', 'ocp', 'pyc'];
+const POLL_INTERVAL = 30000;
+const TIMEOUT = 3000;
+
+async function checkHealth(name) {
+  const dot = document.getElementById('dot-' + name);
+  const badge = document.getElementById('badge-' + name);
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT);
+    const res = await fetch('/' + name + '/healthz', { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      const data = await res.json();
+      dot.className = 'dot ok';
+      badge.textContent = data.version || 'ok';
+    } else {
+      dot.className = 'dot err';
+      badge.textContent = 'error';
+    }
+  } catch {
+    dot.className = 'dot err';
+    badge.textContent = 'offline';
+  }
+}
+
+function pollAll() { servers.forEach(checkHealth); }
+pollAll();
+setInterval(pollAll, POLL_INTERVAL);
+</script>
+
+</body>
+</html>

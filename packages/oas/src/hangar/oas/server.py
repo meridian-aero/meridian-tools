@@ -424,6 +424,10 @@ def main():
         else:
             app = mcp_asgi
 
+        # Add unauthenticated /healthz endpoint
+        from hangar.sdk.health import add_healthz
+        app = add_healthz(app, server_name="oas")
+
         uvicorn.run(app, host=args.host, port=args.port)
     # --- End provenance setup ---
 
