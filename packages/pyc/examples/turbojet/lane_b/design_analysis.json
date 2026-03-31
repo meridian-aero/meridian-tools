@@ -1,0 +1,26 @@
+[
+  {
+    "tool": "create_engine",
+    "args": {
+      "archetype": "turbojet",
+      "name": "tj",
+      "comp_PR": 13.5,
+      "comp_eff": 0.83,
+      "turb_eff": 0.86,
+      "Nmech": 8070.0,
+      "burner_dPqP": 0.03,
+      "nozz_Cv": 0.99,
+      "thermo_method": "CEA"
+    }
+  },
+  {
+    "tool": "run_design_point",
+    "args": {
+      "engine_name": "tj",
+      "alt": 0.0,
+      "MN": 0.000001,
+      "Fn_target": 11800.0,
+      "T4_target": 2370.0
+    }
+  }
+]
