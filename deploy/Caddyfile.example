@@ -28,22 +28,28 @@ mcp.lakesideai.dev {
     }
 
     # --- OAS ---
-    # RFC 9728 OAuth protected resource metadata (no prefix stripping)
     handle /.well-known/oauth-protected-resource/oas {
         reverse_proxy oas-mcp:8000
     }
-    # MCP + viewer requests (prefix stripped)
     handle_path /oas/* {
         reverse_proxy oas-mcp:8000
     }
 
-    # --- OCP (uncomment when ready) ---
-    # handle /.well-known/oauth-protected-resource/ocp {
-    #     reverse_proxy ocp-mcp:8000
-    # }
-    # handle_path /ocp/* {
-    #     reverse_proxy ocp-mcp:8000
-    # }
+    # --- OCP ---
+    handle /.well-known/oauth-protected-resource/ocp {
+        reverse_proxy ocp-mcp:8000
+    }
+    handle_path /ocp/* {
+        reverse_proxy ocp-mcp:8000
+    }
+
+    # --- PYC ---
+    handle /.well-known/oauth-protected-resource/pyc {
+        reverse_proxy pyc-mcp:8000
+    }
+    handle_path /pyc/* {
+        reverse_proxy pyc-mcp:8000
+    }
 
     handle {
         respond "Not Found" 404

@@ -107,34 +107,60 @@ services:
       - web
 
   # ---------- OCP MCP Server (OpenConcept) ----------
-  # Uncomment when packages/ocp is ready:
-  #
-  # ocp-mcp:
-  #   build:
-  #     context: ./repo
-  #     dockerfile: packages/ocp/Dockerfile
-  #   restart: unless-stopped
-  #   depends_on:
-  #     keycloak:
-  #       condition: service_healthy
-  #   volumes:
-  #     - ./hangar_data/ocp:/data
-  #   env_file:
-  #     - path: .env
-  #       required: false
-  #   environment:
-  #     OCP_TRANSPORT: http
-  #     OCP_HOST: 0.0.0.0
-  #     HANGAR_DATA_DIR: /data
-  #     HANGAR_PROV_DB: /data/provenance.db
-  #     OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-https://auth.lakesideai.dev/realms/hangar}
-  #     OIDC_CLIENT_ID: ${OCP_OIDC_CLIENT_ID:-ocp-mcp}
-  #     OIDC_CLIENT_SECRET: ${OCP_OIDC_CLIENT_SECRET:?Set OCP_OIDC_CLIENT_SECRET in .env}
-  #     RESOURCE_SERVER_URL: ${OCP_RESOURCE_SERVER_URL:-https://mcp.lakesideai.dev/ocp}
-  #     HANGAR_PROV_VIEWER: "off"
-  #   networks:
-  #     - internal
-  #     - web
+  ocp-mcp:
+    build:
+      context: ./repo
+      dockerfile: packages/ocp/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    volumes:
+      - ./hangar_data/ocp:/data
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      OCP_TRANSPORT: http
+      OCP_HOST: 0.0.0.0
+      HANGAR_DATA_DIR: /data
+      HANGAR_PROV_DB: /data/provenance.db
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-https://auth.lakesideai.dev/realms/hangar}
+      OIDC_CLIENT_ID: ${OCP_OIDC_CLIENT_ID:-ocp-mcp}
+      OIDC_CLIENT_SECRET: ${OCP_OIDC_CLIENT_SECRET:?Set OCP_OIDC_CLIENT_SECRET in .env}
+      RESOURCE_SERVER_URL: ${OCP_RESOURCE_SERVER_URL:-https://mcp.lakesideai.dev/ocp}
+      HANGAR_PROV_VIEWER: "off"
+    networks:
+      - internal
+      - web
+
+  # ---------- PYC MCP Server (pyCycle) ----------
+  pyc-mcp:
+    build:
+      context: ./repo
+      dockerfile: packages/pyc/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    volumes:
+      - ./hangar_data/pyc:/data
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PYC_TRANSPORT: http
+      PYC_HOST: 0.0.0.0
+      HANGAR_DATA_DIR: /data
+      HANGAR_PROV_DB: /data/provenance.db
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-https://auth.lakesideai.dev/realms/hangar}
+      OIDC_CLIENT_ID: ${PYC_OIDC_CLIENT_ID:-pyc-mcp}
+      OIDC_CLIENT_SECRET: ${PYC_OIDC_CLIENT_SECRET:?Set PYC_OIDC_CLIENT_SECRET in .env}
+      RESOURCE_SERVER_URL: ${PYC_RESOURCE_SERVER_URL:-https://mcp.lakesideai.dev/pyc}
+      HANGAR_PROV_VIEWER: "off"
+    networks:
+      - internal
+      - web
 
 networks:
   web:
