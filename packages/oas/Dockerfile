@@ -4,18 +4,24 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc \
         gfortran \
+        git \
         libopenblas-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy SDK first (changes less often → better layer caching)
+# Install OpenAeroStruct from the fork at a pinned ref.
+# Override at build time: --build-arg OAS_REF=<commit|tag|branch>
+ARG OAS_REF=main
+RUN pip install --no-cache-dir "openaerostruct @ git+https://github.com/acb-code/OpenAeroStruct.git@${OAS_REF}"
+
+# Copy SDK first (changes less often -> better layer caching)
 COPY packages/sdk/ packages/sdk/
 RUN pip install --no-cache-dir "packages/sdk[all]"
 
-# Copy and install the OAS package
+# Copy and install the OAS package (openaerostruct dep already satisfied)
 COPY packages/oas/ packages/oas/
-RUN pip install --no-cache-dir packages/oas
+RUN pip install --no-cache-dir --no-deps packages/oas
 
 # Create non-root user for runtime with a writable home directory
 RUN useradd -r -m -s /usr/sbin/nologin oas && \

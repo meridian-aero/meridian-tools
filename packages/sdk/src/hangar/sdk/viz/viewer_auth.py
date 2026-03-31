@@ -68,7 +68,7 @@ def build_viewer_oidc_config() -> ViewerOIDCConfig | None:
 
     client_id = _hangar_env(
         "HANGAR_VIEWER_OIDC_CLIENT_ID", "OAS_VIEWER_OIDC_CLIENT_ID",
-        default="oas-viewer",
+        default="hangar-viewer",
     )
     resource_server_url = os.environ.get(
         "RESOURCE_SERVER_URL", "http://localhost:8000"
