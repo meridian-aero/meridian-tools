@@ -10,10 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install pyCycle from upstream at a pinned ref.
-# Override at build time: --build-arg PYC_REF=<commit|tag|branch>
+# Install pyCycle from upstream with numpy 2.x compatibility patch.
+# The patch fixes np.complex removal and shape-(1,) scalar assignment.
+# Remove this block once upstream merges OpenMDAO/pyCycle#116.
 ARG PYC_REF=main
-RUN pip install --no-cache-dir "om-pycycle @ git+https://github.com/mdolab/pyCycle.git@${PYC_REF}"
+RUN git clone --depth 1 -b ${PYC_REF} https://github.com/OpenMDAO/pyCycle.git /tmp/pyCycle
+COPY scripts/pycycle-numpy2.patch /tmp/pycycle-numpy2.patch
+RUN cd /tmp/pyCycle && \
+    git apply /tmp/pycycle-numpy2.patch || echo "Patch already applied or upstream fixed" && \
+    pip install --no-cache-dir /tmp/pyCycle && \
+    rm -rf /tmp/pyCycle /tmp/pycycle-numpy2.patch
 
 # Copy SDK first (changes less often -> better layer caching)
 COPY packages/sdk/ packages/sdk/

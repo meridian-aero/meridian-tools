@@ -6,7 +6,10 @@ upstream
 docker
 deploy
 skills
-scripts
+# scripts/ is needed for pycycle-numpy2.patch (PYC Dockerfile)
+scripts/dev.sh
+scripts/setup-upstream.sh
+scripts/sync-skills.sh
 *.md
 *.lock
 .claude
