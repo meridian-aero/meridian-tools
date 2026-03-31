@@ -10,10 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install OpenAeroStruct from the fork at a pinned ref.
+# Install OpenAeroStruct from upstream at a pinned ref.
 # Override at build time: --build-arg OAS_REF=<commit|tag|branch>
 ARG OAS_REF=main
-RUN pip install --no-cache-dir "openaerostruct @ git+https://github.com/acb-code/OpenAeroStruct.git@${OAS_REF}"
+RUN pip install --no-cache-dir "openaerostruct @ git+https://github.com/mdolab/OpenAeroStruct.git@${OAS_REF}"
 
 # Copy SDK first (changes less often -> better layer caching)
 COPY packages/sdk/ packages/sdk/

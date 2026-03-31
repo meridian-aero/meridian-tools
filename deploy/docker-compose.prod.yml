@@ -17,6 +17,7 @@
 #
 # Updating:
 #   cd ~/hangar/repo && git pull
+#   cp ~/hangar/repo/deploy/docker-compose.prod.yml ~/hangar/
 #   cd ~/hangar && docker compose -f docker-compose.prod.yml build --no-cache oas-mcp
 #   docker compose -f docker-compose.prod.yml up -d oas-mcp
 #

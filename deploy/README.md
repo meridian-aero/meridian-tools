@@ -67,10 +67,14 @@ If you currently have `~/oas/` with the `oas` realm, follow
 
 ```bash
 cd ~/hangar/repo && git pull
+cp ~/hangar/repo/deploy/docker-compose.prod.yml ~/hangar/
 cd ~/hangar
 docker compose -f docker-compose.prod.yml build --no-cache oas-mcp
 docker compose -f docker-compose.prod.yml up -d oas-mcp
 ```
+
+> Always re-copy `docker-compose.prod.yml` after pulling — the build
+> context is `./repo` so compose must be at `~/hangar/` alongside it.
 
 ## Adding a new tool
 
