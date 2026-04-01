@@ -496,16 +496,22 @@ def get_session_graph(session_id: str) -> dict:
                 }
             )
 
-    # Edge type 4: cross-tool references
+    # Edge type 4: cross-tool references.
+    # In per-tool viewers, source or target may live in another tool's DB,
+    # so skip edges where either endpoint is missing from the local graph.
     try:
         xref_rows = conn.execute(
             "SELECT * FROM cross_references WHERE session_id=?", (session_id,)
         ).fetchall()
         for xr in xref_rows:
+            src = xr["source_call_id"]
+            tgt = xr["target_call_id"]
+            if src not in id_to_node or (tgt and tgt not in id_to_node):
+                continue
             edges.append(
                 {
-                    "source": xr["source_call_id"],
-                    "target": xr["target_call_id"],
+                    "source": src,
+                    "target": tgt,
                     "label": "cross_tool",
                     "source_tool": xr["source_tool"],
                     "target_tool": xr["target_tool"],
