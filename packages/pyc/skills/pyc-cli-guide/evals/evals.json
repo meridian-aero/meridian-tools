@@ -1,0 +1,146 @@
+{
+  "skill_name": "pyc-cli-guide",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to size a turbojet engine at sea-level static conditions and inspect the results using the pyCycle command line tools. Show me a complete working Python script that uses interactive mode to spawn pyc-cli, create the engine, run the design point, and extract TSFC and thrust from the result.",
+      "expected_output": "A working Python script using subprocess to spawn pyc-cli interactive, with JSON-lines protocol, that calls create_engine and run_design_point. Should show how to parse the response and extract TSFC and Fn from results.performance.",
+      "assertions": [
+        {
+          "id": "uses_interactive_mode",
+          "description": "Script spawns pyc-cli interactive as a subprocess (not one-shot subcommands)",
+          "type": "output_contains",
+          "value": "interactive"
+        },
+        {
+          "id": "correct_json_protocol",
+          "description": "Sends JSON with 'tool' and 'args' keys on stdin",
+          "type": "output_contains",
+          "value": "\"tool\""
+        },
+        {
+          "id": "creates_engine_first",
+          "description": "create_engine is called before run_design_point",
+          "type": "output_contains",
+          "value": "create_engine"
+        },
+        {
+          "id": "calls_design_point",
+          "description": "run_design_point tool is used",
+          "type": "output_contains",
+          "value": "run_design_point"
+        },
+        {
+          "id": "extracts_tsfc",
+          "description": "Shows how to extract TSFC from the result",
+          "type": "output_contains",
+          "value": "TSFC"
+        },
+        {
+          "id": "uses_near_zero_mach",
+          "description": "Uses near-zero Mach number (0.000001) not exactly 0 for SLS",
+          "type": "output_contains_any",
+          "values": ["0.000001", "1e-6", "0.0001"]
+        },
+        {
+          "id": "handles_ok_field",
+          "description": "Checks the ok field in the response envelope to detect errors",
+          "type": "output_contains_any",
+          "values": ["[\"ok\"]", "['ok']", "resp[\"ok\"]", "resp['ok']", "response[\"ok\"]", "response['ok']", ".ok", "\"ok\":", "'ok':"]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I need to run a design point followed by off-design analysis from bash in my CI pipeline. The workflow is: create a turbojet with PR=13.5, size it at SLS for 11800 lbf thrust, then evaluate at 5000 ft / Mach 0.2 / 8000 lbf. Show me the bash commands using one-shot mode and explain how state is preserved between commands.",
+      "expected_output": "Bash commands using pyc-cli subcommands (create-engine, run-design-point, run-off-design) with correct parameters, and explanation of state file persistence between one-shot invocations.",
+      "assertions": [
+        {
+          "id": "uses_oneshot_mode",
+          "description": "Uses pyc-cli kebab-case subcommand syntax",
+          "type": "output_contains_any",
+          "values": ["create-engine", "run-design-point", "run-off-design"]
+        },
+        {
+          "id": "design_before_offdesign",
+          "description": "run-design-point appears before run-off-design",
+          "type": "output_contains",
+          "value": "run-design-point"
+        },
+        {
+          "id": "specifies_comp_pr",
+          "description": "Compressor pressure ratio of 13.5 is specified",
+          "type": "output_contains_any",
+          "values": ["13.5", "comp-PR 13.5", "comp_PR=13.5"]
+        },
+        {
+          "id": "off_design_conditions",
+          "description": "Off-design specifies alt=5000, MN=0.2, Fn=8000",
+          "type": "output_contains_any",
+          "values": ["5000", "--alt 5000"]
+        },
+        {
+          "id": "explains_state_persistence",
+          "description": "Explains how engine state is saved between one-shot calls",
+          "type": "output_contains_any",
+          "values": ["state file", "workspace", "persist", "state/"]
+        },
+        {
+          "id": "explains_design_requirement",
+          "description": "Explains that design point must precede off-design",
+          "type": "output_contains_any",
+          "values": ["before", "must", "first", "precede", "require"]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I'm writing a reproducible benchmark script that creates a turbojet, runs the design point, then runs two off-design conditions, and generates visualization plots for each. I want all results saved to a file. What's the cleanest way to do this with pyc-cli? Show me the workflow file and the command to run it.",
+      "expected_output": "A JSON workflow file with steps (create_engine, run_design_point, run_off_design x2, visualize calls) and the pyc-cli run-script command with --save-to flag. Should explain why script mode is appropriate here.",
+      "assertions": [
+        {
+          "id": "uses_script_mode",
+          "description": "Uses pyc-cli run-script command",
+          "type": "output_contains",
+          "value": "run-script"
+        },
+        {
+          "id": "valid_json_array",
+          "description": "Workflow is a JSON array of tool-call objects",
+          "type": "output_contains",
+          "value": "\"tool\""
+        },
+        {
+          "id": "creates_engine_in_script",
+          "description": "create_engine is a step in the script",
+          "type": "output_contains",
+          "value": "create_engine"
+        },
+        {
+          "id": "includes_visualization",
+          "description": "Script includes visualize calls for the plots",
+          "type": "output_contains",
+          "value": "visualize"
+        },
+        {
+          "id": "uses_run_id_interpolation",
+          "description": "Uses $prev.run_id or $N.run_id interpolation for chaining",
+          "type": "output_contains_any",
+          "values": ["$prev.run_id", "$prev", "$3.run_id", "$4.run_id", "$5.run_id"]
+        },
+        {
+          "id": "uses_save_to_flag",
+          "description": "Uses --save-to flag to save results to file",
+          "type": "output_contains_any",
+          "values": ["--save-to", "save-to"]
+        },
+        {
+          "id": "explains_why_script_mode",
+          "description": "Explains why script mode suits this use case",
+          "type": "output_contains_any",
+          "values": ["reproducib", "single process", "shared state", "in-memory", "batch"]
+        }
+      ]
+    }
+  ]
+}
