@@ -35,6 +35,7 @@ def build_ocp_registry() -> dict[str, Callable]:
         set_requirements,
         start_session,
         unpin_run,
+        visualize,
     )
 
     return {
@@ -61,6 +62,7 @@ def build_ocp_registry() -> dict[str, Callable]:
         "unpin_run": unpin_run,
         "get_detailed_results": get_detailed_results,
         "get_last_logs": get_last_logs,
+        "visualize": visualize,
     }
 
 

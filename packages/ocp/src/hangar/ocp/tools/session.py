@@ -396,3 +396,97 @@ async def get_last_logs(
     run_id = await _resolve_run_id(run_id)
     logs = get_run_logs(run_id)
     return {"run_id": run_id, "log_count": len(logs or []), "logs": logs or []}
+
+
+# ---------------------------------------------------------------------------
+# Visualization
+# ---------------------------------------------------------------------------
+
+
+async def visualize(
+    run_id: Annotated[str, "Run ID to visualize"],
+    plot_type: Annotated[
+        str,
+        "Plot type -- one of: mission_profile, takeoff_profile, weight_breakdown, "
+        "performance_summary, energy_budget, sweep_chart, optimization_history",
+    ],
+    session_id: Annotated[str | None, "Session hint for faster artifact lookup"] = None,
+    case_name: Annotated[str, "Human-readable label for the plot title"] = "",
+    output: Annotated[
+        str | None,
+        "Override visualization output mode: "
+        "'inline' = PNG image (default for claude.ai), "
+        "'file' = save PNG to disk only, "
+        "'url' = return dashboard URL. "
+        "When None, uses session default.",
+    ] = None,
+) -> list:
+    """Generate a visualization plot for an OpenConcept analysis run.
+
+    Available plot types:
+      mission_profile       -- 2x3 grid: altitude, V/S, TAS, throttle, fuel, battery SOC
+      takeoff_profile       -- 1x3 grid: altitude, airspeed, throttle for takeoff phases
+      weight_breakdown      -- horizontal bar chart of MTOW components
+      performance_summary   -- table card with all key mission metrics
+      energy_budget         -- dual-axis battery SOC + fuel used vs range (hybrid only)
+      sweep_chart           -- metrics vs swept parameter (after run_parameter_sweep)
+      optimization_history  -- objective summary + DV values (after run_optimization)
+
+    Output modes (set per-call via 'output', or per-session via configure_session):
+      inline  -- returns [metadata, ImageContent] (default, best for claude.ai)
+      file    -- saves PNG to disk, returns [metadata] with file_path
+      url     -- returns [metadata] with dashboard_url and plot_url
+
+    Scoped to the authenticated user.
+    """
+    from hangar.ocp.viz.plotting import OCP_PLOT_TYPES, generate_ocp_plot
+
+    if plot_type not in OCP_PLOT_TYPES:
+        raise ValueError(
+            f"Unknown plot_type {plot_type!r}. "
+            f"Supported: {sorted(OCP_PLOT_TYPES)}"
+        )
+
+    if output is not None and output not in ("inline", "file", "url"):
+        raise ValueError(
+            f"Unknown output mode {output!r}. Use 'inline', 'file', or 'url'."
+        )
+
+    run_id = await _resolve_run_id(run_id, session_id)
+    user = get_current_user()
+    artifact = await asyncio.to_thread(_artifacts.get, run_id, session_id, user)
+    if artifact is None:
+        raise ValueError(f"Run '{run_id}' not found.")
+
+    # Resolve effective output mode
+    artifact_meta = artifact.get("metadata", {})
+    sid = artifact_meta.get("session_id", session_id or "default")
+    session = _sessions.get(sid)
+    effective_output = output or session.defaults.visualization_output
+
+    # Compute save_dir
+    _user = artifact_meta.get("user", user)
+    _project = artifact_meta.get("project", "default")
+    save_dir = str(_artifacts._data_dir / _user / _project / sid)
+
+    results = artifact.get("results", {})
+
+    plot_result = await asyncio.to_thread(
+        generate_ocp_plot, plot_type, run_id, results, case_name, save_dir,
+    )
+
+    if effective_output == "file":
+        return [plot_result.metadata]
+    elif effective_output == "url":
+        base_url = _get_viewer_base_url()
+        if base_url:
+            plot_result.metadata["dashboard_url"] = (
+                f"{base_url}/dashboard?run_id={run_id}"
+            )
+            plot_result.metadata["plot_url"] = (
+                f"{base_url}/plot?run_id={run_id}&plot_type={plot_type}"
+            )
+        return [plot_result.metadata]
+    else:
+        # Inline mode (default): metadata + ImageContent
+        return [plot_result.metadata, plot_result.image]

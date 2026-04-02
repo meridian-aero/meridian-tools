@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -103,4 +104,35 @@ async def _finalize_analysis(
     envelope = make_envelope(tool_name, run_id, inputs, results, validation, telem)
     if summary is not None:
         envelope["summary"] = summary
+
+    # Auto-visualize if configured
+    await _apply_auto_plots(envelope, session, run_id, results_to_save)
+
     return envelope
+
+
+async def _apply_auto_plots(
+    envelope: dict,
+    session,
+    run_id: str,
+    results: dict,
+) -> None:
+    """Generate auto-visualize plots and attach their hashes to the envelope."""
+    plot_types = session.defaults.auto_visualize
+    if not plot_types:
+        return
+
+    from hangar.ocp.viz.plotting import generate_ocp_plot
+
+    auto_plots: dict[str, str | None] = {}
+    for plot_type in plot_types:
+        try:
+            plot_result = await asyncio.to_thread(
+                generate_ocp_plot, plot_type, run_id, results, "",
+            )
+            auto_plots[plot_type] = plot_result.metadata.get("image_hash")
+        except Exception:
+            pass  # don't let auto-plot errors block analysis results
+
+    if auto_plots:
+        envelope["auto_plots"] = auto_plots

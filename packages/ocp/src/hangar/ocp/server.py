@@ -45,6 +45,7 @@ from hangar.ocp.tools.session import (
     set_requirements,
     start_session,
     unpin_run,
+    visualize,
 )
 from hangar.ocp.tools.resources import (
     artifact_by_run_id,
@@ -57,6 +58,26 @@ from hangar.ocp.tools.prompts import (
     prompt_hybrid_design,
     prompt_mission_analysis,
 )
+
+# ---------------------------------------------------------------------------
+# Register OCP plot types with the viewer
+# ---------------------------------------------------------------------------
+
+from hangar.ocp.viz.plotting import OCP_PLOT_TYPES, generate_ocp_plot
+from hangar.sdk.viz.viewer_server import register_plot_generator, register_plot_types
+
+register_plot_types("mission", [
+    "mission_profile", "takeoff_profile", "weight_breakdown",
+    "performance_summary", "energy_budget",
+])
+register_plot_types("optimization", [
+    "mission_profile", "weight_breakdown", "performance_summary",
+    "optimization_history",
+])
+register_plot_types("sweep", [
+    "sweep_chart", "performance_summary",
+])
+register_plot_generator(OCP_PLOT_TYPES, generate_ocp_plot)
 
 # Re-export state for tests
 from hangar.ocp.state import sessions as _sessions, artifacts as _artifacts  # noqa: F401
@@ -127,6 +148,16 @@ OPTIMIZATION:
   Common constraints: margins.MTOW_margin >= 0, descent.propmodel.batt1.SOC_final >= 0,
   climb.throttle <= 1.05.
 
+VISUALIZATION:
+  Call visualize(run_id, plot_type) after any analysis to generate plots:
+    * mission_profile       -- 2x3 grid: altitude, V/S, TAS, throttle, fuel, battery SOC
+    * takeoff_profile       -- 1x3 grid: altitude, airspeed, throttle (full mission only)
+    * weight_breakdown      -- bar chart of MTOW components (OEW, fuel, payload, battery)
+    * performance_summary   -- table card with all key metrics
+    * energy_budget         -- battery SOC + fuel used vs range (hybrid/electric only)
+    * sweep_chart           -- metrics vs swept parameter (after run_parameter_sweep)
+    * optimization_history  -- convergence + DV values (after run_optimization)
+
 PROVENANCE & DECISION LOGGING:
   Agents MUST call log_decision at these points:
   • After load_aircraft_template:    decision_type="architecture_choice"
@@ -169,6 +200,12 @@ mcp.tool()(capture_tool(pin_run))
 mcp.tool()(capture_tool(unpin_run))
 mcp.tool()(capture_tool(get_detailed_results))
 mcp.tool()(capture_tool(get_last_logs))
+
+# ---------------------------------------------------------------------------
+# Register visualization tools
+# ---------------------------------------------------------------------------
+
+mcp.tool()(capture_tool(visualize))
 
 # ---------------------------------------------------------------------------
 # Register session tools
