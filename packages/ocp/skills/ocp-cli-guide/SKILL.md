@@ -131,6 +131,8 @@ Run `ocp-cli list-tools` for the complete, up-to-date list. Key groups:
 - **Analysis:** `run_mission_analysis`, `run_parameter_sweep`, `run_optimization`, `reset`
 - **Observability:** `get_run`, `get_detailed_results`, `get_last_logs`, `pin_run`, `unpin_run`, `configure_session`, `set_requirements`
 - **Artifacts:** `list_artifacts`, `get_artifact`, `get_artifact_summary`, `delete_artifact`
-- **Provenance:** `start_session`, `log_decision`, `export_session_graph`
+- **Visualization:** `visualize`
+- **Provenance:** `start_session`, `log_decision`, `link_cross_tool_result`, `export_session_graph`
+- **Convenience commands:** `list-tools`, `list-runs`, `show`, `plot`, `viewer`
 
 See `commands.md` for parameters and `provenance.md` for the provenance workflow.

@@ -152,11 +152,76 @@ ocp-cli --pretty run-optimization --objective fuel_burn \
 
 ---
 
+## Visualization tools
+
+### visualize
+
+Generate a plot for an OpenConcept analysis run.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `run_id` | str | **required** | Run ID (or `"latest"`) |
+| `plot_type` | str | **required** | See plot types below |
+| `case_name` | str | `""` | Label for the plot title |
+| `output` | str | `None` | `"inline"`, `"file"`, or `"url"` |
+
+**Plot types:**
+
+| Type | Applicable to | Description |
+|------|--------------|-------------|
+| `mission_profile` | mission, optimization | 2x3 grid: altitude, V/S, TAS, throttle, fuel, battery SOC vs range |
+| `takeoff_profile` | mission (full only) | 1x3 grid: altitude, airspeed, throttle for takeoff phases |
+| `weight_breakdown` | mission, optimization | Horizontal bar chart of MTOW components (OEW, fuel, payload) |
+| `performance_summary` | all | Table card with all key metrics |
+| `energy_budget` | mission (hybrid only) | Dual Y-axis: battery SOC + fuel used vs range |
+| `sweep_chart` | sweep | 2x2 grid: metrics vs swept parameter |
+| `optimization_history` | optimization | Objective summary + optimized DV values |
+
+**Important**: `visualize` returns a **list**, not a dict. First element is
+metadata; second (if present in inline mode) is the image.
+
+```bash
+ocp-cli plot latest mission_profile -o mission.png
+ocp-cli plot latest weight_breakdown
+ocp-cli --pretty visualize --run-id latest --plot-type performance_summary --output file
+```
+
+---
+
 ## Observability & artifact tools
 
-See the OAS CLI guide for shared patterns — OCP uses the same SDK tools with
-the same interface:
+| Tool | Key parameters | Purpose |
+|------|---------------|---------|
+| `get-run` | `--run-id` | Full manifest: inputs, outputs, validation |
+| `get-detailed-results` | `--run-id`, `--detail-level` | Full results (`standard`) or scalars only (`summary`) |
+| `pin-run` / `unpin-run` | `--run-id` | Prevent/release artifact eviction |
+| `get-last-logs` | `--run-id` | Server-side log records |
+| `list-artifacts` | `--session-id`, `--analysis-type`, `--project` | Browse saved runs |
+| `get-artifact` / `get-artifact-summary` | `--run-id` | Full or metadata-only retrieval |
+| `delete-artifact` | `--run-id` | Remove a saved artifact |
+| `configure-session` | `--auto-visualize`, `--visualization-output` | Per-session defaults |
+| `set-requirements` | `--requirements` | Auto-checked constraints |
+| `reset` | `--session-id` | Clear all state |
 
-- `get-run`, `pin-run`, `unpin-run`, `get-detailed-results`, `get-last-logs`
-- `list-artifacts`, `get-artifact`, `get-artifact-summary`, `delete-artifact`
-- `configure-session`, `set-requirements`, `reset`
+---
+
+## Provenance tools
+
+| Tool | Key parameters | Purpose |
+|------|---------------|---------|
+| `start-session` | `--notes`, `--session-id` | Begin named provenance session |
+| `log-decision` | `--decision-type`, `--reasoning`, `--selected-action`, `--prior-call-id` | Record reasoning step |
+| `link-cross-tool-result` | `--source-call-id`, `--source-tool`, `--target-tool` | Cross-tool data handoff |
+| `export-session-graph` | `--session-id` | Export provenance DAG as JSON |
+
+---
+
+## Convenience commands
+
+| Command | Usage | Description |
+|---------|-------|-------------|
+| `list-tools` | `ocp-cli list-tools` | Print available tool names |
+| `list-runs` | `ocp-cli list-runs --limit 10` | Browse recent runs |
+| `show` | `ocp-cli show latest` | Show summary of a run |
+| `plot` | `ocp-cli plot latest mission_profile` | Save plot to disk (shorthand for visualize with output=file) |
+| `viewer` | `ocp-cli viewer --port 7654` | Start provenance/dashboard viewer |

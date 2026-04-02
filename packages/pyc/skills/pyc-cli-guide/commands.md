@@ -134,6 +134,7 @@ Set requirements checked against every analysis result.
 | Tool | Key parameters | Purpose |
 |------|---------------|---------|
 | `get-run` | `--run-id` | Full manifest: inputs, outputs, validation |
+| `get-detailed-results` | `--run-id`, `--detail-level` | Full results (`standard`) or scalars only (`summary`) |
 | `pin-run` | `--run-id` | Prevent cache/artifact eviction |
 | `unpin-run` | `--run-id` | Release a pinned run |
 | `get-last-logs` | `--run-id` | Server-side log records for a run |

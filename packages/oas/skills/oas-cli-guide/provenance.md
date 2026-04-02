@@ -12,12 +12,13 @@ interactive or script mode. Use `log_decision` before major choices (mesh
 resolution, design variables, interpreting surprising results). Call
 `export_session_graph` at the end to save the audit trail.
 
-## The three provenance tools
+## Provenance tools
 
 | Tool | Purpose |
 |------|---------|
-| `start_session` | Begin a named session — groups all subsequent calls |
+| `start_session` | Begin a named session -- groups all subsequent calls |
 | `log_decision` | Record why a choice was made (DV selection, mesh, etc.) |
+| `link_cross_tool_result` | Record data handoff between tool servers (e.g., OAS wing data passed to OCP mission) |
 | `export_session_graph` | Export the session DAG as JSON |
 
 ## Decision types
@@ -133,5 +134,5 @@ DB under session `"default"`, but they won't be grouped into a named session.
 
 - **CLI**: `oas-cli viewer` starts the viewer server on localhost:7654
 - **Browser**: Open `http://localhost:7654/viewer?session_id=<id>`
-- **Offline**: Open `packages/sdk/src/hangar/sdk/viz/viewer/index.html` and drop the
+- **Offline**: Open `oas_mcp/provenance/viewer/index.html` and drop the
   exported JSON file onto the page

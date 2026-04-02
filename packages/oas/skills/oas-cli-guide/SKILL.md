@@ -25,18 +25,15 @@ without needing an MCP connection.
 ## Prerequisites
 
 ```bash
-# From the workspace root (installs all packages):
-uv sync
-
-# Or install the OAS package directly:
-uv pip install -e packages/oas/
+# Install the package (oas-cli is a console_scripts entry point):
+uv pip install -e ".[mcp]"   # or: pip install -e ".[mcp]"
 
 # Verify:
 oas-cli list-tools
 ```
 
 If `command not found`, the virtualenv is not activated or the package was not
-installed. You can also invoke via `python -m hangar.oas.cli <args>`.
+installed. You can also invoke via `python -m oas_mcp.cli <args>`.
 
 ## Global flags come BEFORE the subcommand
 
@@ -132,7 +129,7 @@ Run `oas-cli list-tools` for the complete, up-to-date list. Key groups:
 - **Analysis:** `create_surface`, `run_aero_analysis`, `run_aerostruct_analysis`, `compute_drag_polar`, `compute_stability_derivatives`, `run_optimization`, `reset`
 - **Observability:** `visualize`, `get_run`, `get_detailed_results`, `get_n2_html`, `get_last_logs`, `pin_run`, `unpin_run`, `configure_session`, `set_requirements`
 - **Artifacts:** `list_artifacts`, `get_artifact`, `get_artifact_summary`, `delete_artifact`
-- **Provenance:** `start_session`, `log_decision`, `export_session_graph`
+- **Provenance:** `start_session`, `log_decision`, `link_cross_tool_result`, `export_session_graph`
 - **Convenience commands:** `list-tools`, `list-runs`, `show`, `plot`, `viewer`
 
 See `commands.md` for parameters and `provenance.md` for the provenance workflow.
