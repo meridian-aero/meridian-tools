@@ -109,9 +109,27 @@ uv run pytest packages/oas/tests/
 uv run pytest -m "not slow"
 ```
 
+## Skills
+
+Skills live in two places and must be kept in sync:
+
+1. **`.claude/skills/<skill-name>/`** -- active location that Claude Code loads
+   at runtime. This directory is gitignored.
+2. **`packages/<pkg>/skills/<skill-name>/`** -- git-tracked source of truth.
+   Cross-tool skills go in `skills/` at the repo root.
+
+When creating or updating a skill:
+1. Edit the files in `.claude/skills/<skill-name>/`
+2. Copy the changed files to `packages/<pkg>/skills/<skill-name>/`
+3. Commit the `packages/` copies so changes are tracked in git
+
+A sync script populates `.claude/skills/` from the git-tracked copies.
+Each skill directory contains `SKILL.md` (main guide), plus supporting files
+like `commands.md`, `modes.md`, `provenance.md`, and `examples/`.
+
 ## Adding a new tool
 1. Create `packages/<toolname>/` following the `oas/` structure
-2. Add `src/hangar/<toolname>/` — no `__init__.py` in `src/hangar/`
+2. Add `src/hangar/<toolname>/` -- no `__init__.py` in `src/hangar/`
 3. Add tool-specific skills in `packages/<toolname>/skills/`
 4. Import and use `hangar.sdk` for provenance, envelopes, validation
 5. Add upstream clone to `scripts/setup-upstream.sh`
