@@ -123,12 +123,16 @@ docker compose -f docker/docker-compose.yml up --build
 
 ## Adding a new tool
 
-1. Create `packages/<tool>/` following the `oas/` structure
-2. Add `src/hangar/<tool>/` with your server and tools — **no `__init__.py` in `src/hangar/`**
-3. Set `name = "hangar-<tool>"` in your `pyproject.toml` with `hangar-sdk` as a dependency
-4. Add tool-specific skills in `packages/<tool>/skills/`
-5. Add upstream clone to `scripts/setup-upstream.sh`
-6. Add to `docker/docker-compose.yml`
+The full process is documented in the `/new-tool` skill (see `skills/new-tool/SKILL.md`). The steps at a high level:
+
+1. **Scope the tool** -- study the upstream source to determine which analyses to expose, identify golden tests and critical demo examples
+2. **Scaffold the MCP server** -- create `packages/<tool>/` following the `oas/` structure, using the SDK for provenance, envelopes, validation, and artifacts. No `__init__.py` in `src/hangar/`
+3. **Integrate the viewer** -- wire up the provenance viewer daemon thread and env vars matching the other packages
+4. **Set up the CLI** -- create `<tool>-cli` and `<tool>-server` console_scripts exposing all MCP tools through interactive, one-shot, and script modes
+5. **Verify auth and access** -- confirm OIDC auth, transport selection, and env var naming match the other packages
+6. **Run full integration tests** -- exercise every tool via CLI, verify response envelopes, validation, visualization, and provenance DAG
+7. **Set up deployment** -- add to `docker-compose.yml`, `Caddyfile`, document Keycloak setup in `packages/<tool>/DEPLOY.md`, add to `.mcp.json`
+8. **Create a `<tool>-cli-guide` skill** -- following the `oas-cli-guide` structure with modes, commands, provenance, and example workflows
 
 ## Contributing
 

@@ -128,10 +128,8 @@ Each skill directory contains `SKILL.md` (main guide), plus supporting files
 like `commands.md`, `modes.md`, `provenance.md`, and `examples/`.
 
 ## Adding a new tool
-1. Create `packages/<toolname>/` following the `oas/` structure
-2. Add `src/hangar/<toolname>/` -- no `__init__.py` in `src/hangar/`
-3. Add tool-specific skills in `packages/<toolname>/skills/`
-4. Import and use `hangar.sdk` for provenance, envelopes, validation
-5. Add upstream clone to `scripts/setup-upstream.sh`
-6. Add to `docker/docker-compose.yml`
-7. See `.claude/commands/new-tool.md` for detailed guide
+Use the `/new-tool` skill for the full guided process, or see
+`skills/new-tool/SKILL.md`. The steps cover: scoping the upstream tool,
+scaffolding the MCP server and CLI, integrating the viewer, verifying auth,
+running integration tests, setting up deployment (Docker, Caddy, Keycloak),
+and creating a CLI guide skill.
