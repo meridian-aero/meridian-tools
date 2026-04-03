@@ -8,6 +8,8 @@ dependencies = [
     "hangar-oas",
     "hangar-ocp",
     "hangar-pyc",
+    "hangar-omd",
+    "hangar-range-safety",
     "hangar-viewer",
 ]
 
@@ -19,6 +21,8 @@ hangar-sdk = { workspace = true }
 hangar-oas = { workspace = true }
 hangar-ocp = { workspace = true }
 hangar-pyc = { workspace = true }
+hangar-omd = { workspace = true }
+hangar-range-safety = { workspace = true }
 hangar-viewer = { workspace = true }
 
 [tool.pytest.ini_options]

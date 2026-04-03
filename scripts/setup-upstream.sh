@@ -44,6 +44,14 @@ if [ -f "$PYCYCLE_PATCH" ]; then
         || echo "  Patch already applied or upstream fixed — skipping."
 fi
 
+echo "Cloning OpenMDAO..."
+if [ ! -d "$UPSTREAM_DIR/OpenMDAO" ]; then
+    git clone https://github.com/OpenMDAO/OpenMDAO "$UPSTREAM_DIR/OpenMDAO"
+else
+    echo "  Already exists, pulling latest..."
+    git -C "$UPSTREAM_DIR/OpenMDAO" pull
+fi
+
 echo "Cloning AeroSandbox..."
 if [ ! -d "$UPSTREAM_DIR/AeroSandbox" ]; then
     git clone https://github.com/peterdsharpe/AeroSandbox "$UPSTREAM_DIR/AeroSandbox"

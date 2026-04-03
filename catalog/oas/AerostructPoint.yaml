@@ -1,0 +1,262 @@
+# Component catalog entry: OAS AerostructPoint
+# Reference data for plan authoring -- not executable code.
+
+type: oas/AerostructPoint
+source: openaerostruct
+description: >
+  Coupled aerostructural analysis point for lifting surfaces.
+  Uses vortex lattice method (VLM) for aerodynamics coupled with
+  finite element beam model (tube or wingbox) for structures.
+import_path: openaerostruct.integration.aerostruct_groups.AerostructPoint
+geometry_path: openaerostruct.integration.aerostruct_groups.AerostructGeometry
+
+inputs:
+  surface_config:
+    name:
+      type: string
+      required: true
+      description: Surface identifier used in variable paths
+    wing_type:
+      type: string
+      enum: [rect, CRM, uCRM_based]
+      default: rect
+      description: Planform shape template
+    num_x:
+      type: integer
+      minimum: 2
+      default: 2
+      description: Chordwise mesh panels
+    num_y:
+      type: integer
+      minimum: 3
+      required: true
+      description: Spanwise mesh points (MUST be odd)
+    span:
+      type: number
+      units: m
+      description: Full wingspan (tip-to-tip before symmetry halving)
+    root_chord:
+      type: number
+      units: m
+      description: Root chord length
+    symmetry:
+      type: boolean
+      default: true
+      description: Exploit bilateral symmetry (half-model)
+    fem_model_type:
+      type: string
+      enum: [tube, wingbox]
+      required: true
+      description: Structural finite element model type
+    E:
+      type: number
+      units: Pa
+      description: Young's modulus (required for structural analysis)
+    G:
+      type: number
+      units: Pa
+      description: Shear modulus (required for structural analysis)
+    yield_stress:
+      type: number
+      units: Pa
+      description: Material yield stress
+    safety_factor:
+      type: number
+      default: 1.5
+      description: Structural safety factor
+    mrho:
+      type: number
+      units: kg/m^3
+      description: Material density
+    thickness_cp:
+      type: array
+      items: number
+      units: m
+      description: Tube thickness control points (root-to-tip). Only for fem_model_type=tube.
+    twist_cp:
+      type: array
+      items: number
+      units: deg
+      description: Twist angle control points (root-to-tip)
+    chord_cp:
+      type: array
+      items: number
+      description: Chord scaling control points (root-to-tip)
+    t_over_c_cp:
+      type: array
+      items: number
+      description: Thickness-to-chord ratio control points (root-to-tip)
+    sweep:
+      type: number
+      units: deg
+      default: 0.0
+      description: Leading-edge sweep angle
+    dihedral:
+      type: number
+      units: deg
+      default: 0.0
+      description: Dihedral angle
+    taper:
+      type: number
+      default: 1.0
+      description: Taper ratio (tip chord / root chord)
+    with_viscous:
+      type: boolean
+      default: true
+      description: Include viscous drag estimation
+    with_wave:
+      type: boolean
+      default: false
+      description: Include wave drag estimation
+    CL0:
+      type: number
+      default: 0.0
+      description: Zero-alpha lift coefficient offset
+    CD0:
+      type: number
+      default: 0.0
+      description: Parasitic drag coefficient offset
+    groundplane:
+      type: boolean
+      default: false
+      description: Enable ground effect (requires symmetry=true)
+
+  flight_conditions:
+    velocity:
+      type: number
+      units: m/s
+      default: 248.136
+      description: Freestream velocity
+    alpha:
+      type: number
+      units: deg
+      default: 5.0
+      description: Angle of attack
+    Mach_number:
+      type: number
+      default: 0.84
+    re:
+      type: number
+      units: 1/m
+      default: 1.0e6
+      description: Reynolds number per unit length
+    rho:
+      type: number
+      units: kg/m^3
+      default: 0.38
+      description: Air density
+    CT:
+      type: number
+      units: 1/s
+      default: 9.81e-6
+      description: Thrust-specific fuel consumption
+    R:
+      type: number
+      units: m
+      default: 14.3e6
+      description: Range
+    W0:
+      type: number
+      units: kg
+      default: 25000.0
+      description: Operating empty weight + payload
+    speed_of_sound:
+      type: number
+      units: m/s
+      default: 295.07
+    load_factor:
+      type: number
+      default: 1.0
+      description: Load factor (g's)
+    empty_cg:
+      type: array
+      items: number
+      units: m
+      default: [0.35, 0.0, 0.0]
+      description: Empty CG location [x, y, z]
+
+outputs:
+  CL:
+    units: dimensionless
+    description: Total lift coefficient
+  CD:
+    units: dimensionless
+    description: Total drag coefficient
+  CM:
+    units: dimensionless
+    description: Pitching moment coefficient (array)
+  L_over_D:
+    units: dimensionless
+    description: Lift-to-drag ratio
+  structural_mass:
+    units: kg
+    description: Total structural mass of all surfaces
+  failure:
+    units: dimensionless
+    description: Max failure index across all elements (<0 = safe with safety factor)
+  fuel_burn:
+    units: kg
+    description: Estimated fuel burn (Breguet range equation)
+  L_equals_W:
+    units: dimensionless
+    description: Lift-equals-weight residual (0 = trimmed)
+
+partials: analytic
+
+recommended_solvers:
+  nonlinear:
+    type: NewtonSolver
+    options:
+      maxiter: 20
+      atol: 1.0e-6
+      rtol: 1.0e-6
+      solve_subsystems: true
+  linear:
+    type: DirectSolver
+
+recommended_dvs:
+  - name: twist_cp
+    lower: -10.0
+    upper: 15.0
+    units: deg
+    description: Twist distribution (aerodynamic shaping)
+  - name: thickness_cp
+    lower: 0.001
+    upper: 0.5
+    units: m
+    description: Tube wall thickness (structural sizing, tube FEM only)
+  - name: spar_thickness_cp
+    lower: 0.001
+    upper: 0.1
+    units: m
+    description: Spar thickness (wingbox FEM only)
+  - name: skin_thickness_cp
+    lower: 0.001
+    upper: 0.1
+    units: m
+    description: Skin thickness (wingbox FEM only)
+  - name: alpha
+    lower: -5.0
+    upper: 15.0
+    description: Angle of attack (for trim)
+
+recommended_constraints:
+  - name: failure
+    upper: 0.0
+    description: Structural failure index (KS aggregated, <0 means safe)
+  - name: L_equals_W
+    equals: 0.0
+    description: Trim constraint (lift = weight)
+  - name: thickness_intersects
+    upper: 0.0
+    description: Wingbox thickness intersection (wingbox FEM only)
+
+known_issues:
+  - "num_y must be odd (3, 5, 7, ...) or OAS raises an error"
+  - "load_factor has a caching bug in OAS -- always set it explicitly per analysis"
+  - "wingbox FEM requires airfoil coordinate data (data_x_upper, data_y_upper, etc.)"
+  - "CRM mesh returns (mesh, twist_cp) tuple -- rect returns mesh only"
+  - "OAS silently ignores unrecognized design variable names"
+  - "Optimizer converging in 1-2 iterations usually means DV bounds are wrong"
+  - "OAS cannot model strut load relief for truss-braced wing concepts"
+  - "Control point arrays are root-to-tip ordered"
