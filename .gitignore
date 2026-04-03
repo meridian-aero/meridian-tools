@@ -217,9 +217,8 @@ upstream/*/
 # Provenance databases (local state)
 *.db
 
-# Artifact data (analysis run outputs)
+# Runtime data (analysis artifacts, provenance, omd state)
 **/hangar_data/
-oas_data/
 
 # CLI state
 .hangar/
