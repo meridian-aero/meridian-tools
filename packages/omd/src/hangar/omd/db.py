@@ -140,6 +140,41 @@ def _now() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Data directory helpers
+# ---------------------------------------------------------------------------
+
+
+def omd_data_root() -> Path:
+    """Return the root directory for all omd runtime data.
+
+    Reads OMD_DATA_ROOT env var, or defaults to hangar_data/omd/.
+    """
+    return Path(os.environ.get("OMD_DATA_ROOT", "hangar_data/omd"))
+
+
+def plan_store_dir() -> Path:
+    """Return the plan store directory.
+
+    Reads OMD_PLAN_STORE env var, or defaults to {omd_data_root}/plans/.
+    """
+    env = os.environ.get("OMD_PLAN_STORE")
+    if env:
+        return Path(env)
+    return omd_data_root() / "plans"
+
+
+def recordings_dir() -> Path:
+    """Return the recordings directory for OpenMDAO recorder files.
+
+    Reads OMD_RECORDINGS_DIR env var, or defaults to {omd_data_root}/recordings/.
+    """
+    env = os.environ.get("OMD_RECORDINGS_DIR")
+    if env:
+        return Path(env)
+    return omd_data_root() / "recordings"
+
+
+# ---------------------------------------------------------------------------
 # Initialization
 # ---------------------------------------------------------------------------
 

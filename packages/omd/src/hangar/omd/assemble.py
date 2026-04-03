@@ -198,15 +198,37 @@ def assemble_plan(
     with open(output, "w") as f:
         yaml.dump(plan, f, default_flow_style=False, sort_keys=False)
 
-    # Archive to history
+    # Archive to history (in the plan directory)
     history_dir = plan_dir / "history"
     history_dir.mkdir(exist_ok=True)
     shutil.copy2(output, history_dir / f"v{new_version}.yaml")
+
+    # Copy to central plan store
+    plan_id = plan.get("metadata", {}).get("id", "unknown")
+    store_path = _copy_to_plan_store(plan_id, new_version, output)
 
     return {
         "plan": plan,
         "version": new_version,
         "content_hash": content_hash,
         "output_path": str(output),
+        "store_path": str(store_path) if store_path else None,
         "errors": [],
     }
+
+
+def _copy_to_plan_store(plan_id: str, version: int, source: Path) -> Path | None:
+    """Copy assembled plan to the central plan store.
+
+    Returns the store path, or None if the copy failed.
+    """
+    from hangar.omd.db import plan_store_dir
+
+    try:
+        store_dir = plan_store_dir() / plan_id
+        store_dir.mkdir(parents=True, exist_ok=True)
+        dest = store_dir / f"v{version}.yaml"
+        shutil.copy2(source, dest)
+        return dest
+    except Exception:
+        return None

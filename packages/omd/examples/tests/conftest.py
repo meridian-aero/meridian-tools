@@ -1,12 +1,8 @@
-"""Shared fixtures for hangar-omd tests."""
+"""Fixtures for examples parity tests."""
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(autouse=True)
@@ -16,9 +12,3 @@ def isolate_omd_data(tmp_path, monkeypatch):
     monkeypatch.setenv("OMD_PLAN_STORE", str(tmp_path / "plans"))
     monkeypatch.setenv("OMD_RECORDINGS_DIR", str(tmp_path / "recordings"))
     yield tmp_path
-
-
-@pytest.fixture
-def fixtures_dir():
-    """Return the path to test fixture plan directories."""
-    return FIXTURES_DIR

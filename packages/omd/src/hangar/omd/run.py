@@ -16,6 +16,8 @@ from hangar.omd.materializer import materialize, apply_solvers_post_setup
 from hangar.omd.recorder import import_recorder_data
 from hangar.omd.db import (
     init_analysis_db,
+    plan_store_dir,
+    recordings_dir,
     record_entity,
     record_activity,
     add_prov_edge,
@@ -67,8 +69,10 @@ def run_plan(
     plan_entity_id = f"{plan_id}/v{plan_version}"
     activity_id = f"act-execute-{run_id}"
 
-    # Record plan entity if not already recorded
+    # Record plan entity -- use plan store path if available
     content_hash = plan.get("metadata", {}).get("content_hash")
+    store_path = plan_store_dir() / plan_id / f"v{plan_version}.yaml"
+    plan_storage_ref = str(store_path) if store_path.exists() else str(plan_path)
     record_entity(
         entity_id=plan_entity_id,
         entity_type="plan",
@@ -76,7 +80,7 @@ def run_plan(
         plan_id=plan_id,
         version=plan_version,
         content_hash=content_hash,
-        storage_ref=str(plan_path),
+        storage_ref=plan_storage_ref,
     )
 
     # Record execute activity start
@@ -92,9 +96,14 @@ def run_plan(
     # Provenance: activity used plan
     add_prov_edge("used", activity_id, plan_entity_id)
 
-    # Materialize
+    # Materialize with persistent recorder path
+    rec_dir = recordings_dir()
+    rec_dir.mkdir(parents=True, exist_ok=True)
+    recorder_path = rec_dir / f"{run_id}.sql"
+
     try:
-        prob, metadata = materialize(plan, recording_level)
+        prob, metadata = materialize(plan, recording_level,
+                                     recorder_path=recorder_path)
         apply_solvers_post_setup(prob, metadata)
     except Exception as exc:
         _record_failure(activity_id, run_id, plan_id, plan_entity_id, str(exc))
