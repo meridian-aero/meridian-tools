@@ -259,7 +259,8 @@ def _median_of(block: dict | None, default: str = "--") -> str:
 
 def build_evals_rows(evals_dir: Path) -> tuple[list[str], list[list[str]]]:
     header = ["Case", "Harness", "Model", "Seeds", "Completed", "Passed",
-              "Valid-call rate (med)", "Turns (med)", "Wall clock s (med)"]
+              "Ambig", "Rep-dis", "Valid-call rate (med)", "Turns (med)",
+              "Wall clock s (med)"]
     latest: dict[tuple, tuple[str, dict]] = {}
     for path in sorted(evals_dir.glob("*_summary.json")):
         try:
@@ -276,6 +277,11 @@ def build_evals_rows(evals_dir: Path) -> tuple[list[str], list[list[str]]]:
             str(rec.get("n_seeds", "--")),
             f"{rec.get('n_completed', 0)}/{rec.get('n_seeds', 0)}",
             f"{rec.get('n_passed', 0)}/{rec.get('n_seeds', 0)}",
+            # Ambig / Rep-dis come from hangar.evals.regrade; "--" when the
+            # summary predates it. A Passed count is only safe to read at face
+            # value when both are 0 -- see the note under the table.
+            str(rec.get("n_ambiguous", "--")),
+            str(rec.get("n_report_disagrees", "--")),
             _median_of(rec.get("valid_call_rate")),
             _median_of(rec.get("turns")),
             _median_of(rec.get("wall_clock_s")),
@@ -323,10 +329,16 @@ def main() -> int:
         eheader, erows = build_evals_rows(args.evals_dir)
         if erows:
             write_csv(TABLES_DIR / "sandboxed_evals.csv", eheader, erows)
+            evals_note = (
+                f"source: {args.evals_dir} -- Ambig: seeds where the oracle "
+                "skipped a successful same-mode run (score depends on run "
+                "order); Rep-dis: seeds where the agent's own verdict differs "
+                "from the effect grade. Read Passed at face value only where "
+                "both are 0.")
             write_md(TABLES_DIR / "sandboxed_evals.md", eheader, erows,
-                     f"source: {args.evals_dir}")
+                     evals_note)
             write_tex(TABLES_DIR / "sandboxed_evals.tex", eheader, erows,
-                      f"source: {args.evals_dir}")
+                      evals_note)
             print(f"Sandboxed evals table: {len(erows)} rows -> "
                   f"{TABLES_DIR}/sandboxed_evals.{{csv,md,tex}}")
         else:
